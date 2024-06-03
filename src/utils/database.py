@@ -13,7 +13,6 @@ SUPABASE_USER = os.getenv("SUPABASE_USER")
 SUPABASE_PASSWORD = os.getenv("SUPABASE_PASSWORD")
 
 try:
-    # Database url configuration
     DATABASE_URL = (
         "postgresql+psycopg2://{username}:{password}@{host}:{port}/{db_name}".format(
             host=SUPABASE_HOST,
@@ -39,6 +38,7 @@ Base = declarative_base()
 
 def get_db():
     db = SessionLocal()
+    print(db)
     try:
         yield db
     finally:

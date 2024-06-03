@@ -1,48 +1,21 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, UUID4
 from typing import List, Optional
-
-
-class SentimentScoreBase(BaseModel):
-    score: float
-
-
-class SentimentScoreCreate(SentimentScoreBase):
-    pass
-
-
-class SentimentScore(SentimentScoreBase):
-    id: int
-
-    class Config:
-        orm_mode = True
-
-
-class CompanyReviewBase(BaseModel):
-    review_text: str
-
-
-class CompanyReviewCreate(CompanyReviewBase):
-    pass
-
-
-class CompanyReview(CompanyReviewBase):
-    id: int
-
-    class Config:
-        orm_mode = True
+from datetime import datetime
 
 
 class CompanyBase(BaseModel):
-    display_name: str
-    description: str
-    logo_url: str
-    star_rating: float
-    tags: List[str]
-    review_count: int
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    logo_url: Optional[str] = None
+    star_rating: Optional[float] = 0
+    tags: Optional[List[str]] = []
+    company_sentiment: Optional[int] = 0
+    review_count: Optional[int] = 0
 
 
 class CompanyCreate(CompanyBase):
-    pass
+    display_name: str
+    description: str
 
 
 class CompanyUpdate(CompanyBase):
@@ -50,13 +23,37 @@ class CompanyUpdate(CompanyBase):
 
 
 class CompanyInDBBase(CompanyBase):
-    id: int
-    company_sentiment: Optional[SentimentScore] = None
-    reviews: List[CompanyReview] = []
+    id: UUID4
+    created_at: datetime
+    updated_at: datetime
+    is_deleted: bool
 
     class Config:
         orm_mode = True
 
 
 class Company(CompanyInDBBase):
+    pass
+
+
+class CompanyReviewBase(BaseModel):
+    review_text: Optional[str] = None
+
+
+class CompanyReviewCreate(CompanyReviewBase):
+    review_text: str
+
+
+class CompanyReviewUpdate(CompanyReviewBase):
+    pass
+
+
+class CompanyReviewInDBBase(CompanyReviewBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
+class CompanyReview(CompanyReviewInDBBase):
     pass
