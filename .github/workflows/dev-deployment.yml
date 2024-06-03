@@ -42,14 +42,14 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build . --file ${{ env.DOCKERFILE_LOCATION }} --tag ${{ secrets.GCP_REGISTRY_URL }}:${{ github.sha }}
-          docker tag ${{ secrets.GCP_REGISTRY_URL }}:${{ github.sha }} ${{ secrets.GCP_REGISTRY_URL }}:latest
+          docker build . --file ${{ env.DOCKERFILE_LOCATION }} --tag ${{ env.GCP_REGISTRY_URL }}:${{ github.sha }}
+          docker tag ${{ env.GCP_REGISTRY_URL }}:${{ github.sha }} ${{ env.GCP_REGISTRY_URL }}:latest
         working-directory: ${{ env.WORKING_DIRECTORY }}
       
       - name: Push Image to GAR
         run: |
-          docker push ${{ secrets.GCP_REGISTRY_URL }}:${{ github.sha }}
-          docker push ${{ secrets.GCP_REGISTRY_URL }}:latest
+          docker push ${{ env.GCP_REGISTRY_URL }}:${{ github.sha }}
+          docker push ${{ env.GCP_REGISTRY_URL }}:latest
 
       - name: Deploy to Cloud Run
         id: deploy
@@ -57,7 +57,7 @@ jobs:
         with:
           service: ${{ secrets.GCP_CLOUDRUN_SERVICE }}
           region: ${{ secrets.GCP_PROJECT_REGION }}
-          image: ${{ secrets.GCP_REGISTRY_URL }}:latest
+          image: ${{ env.GCP_REGISTRY_URL }}:latest
 
       - name: Show Cloud Run output
         run: echo ${{ steps.deploy.outputs.url }}
@@ -66,7 +66,7 @@ jobs:
       #   run: |
       #     echo SERVICE_NAME ${{ secrets.GCP_CLOUDRUN_SERVICE }}
       #     gcloud run deploy ${{ secrets.GCP_CLOUDRUN_SERVICE }} \
-      #       --image ${{ secrets.GCP_REGISTRY_URL }}:latest \
+      #       --image ${{ env.GCP_REGISTRY_URL }}:latest \
       #       --platform managed \
       #       --region ${{ secrets.GCP_PROJECT_REGION }}
       #       --allow-unauthenticated
