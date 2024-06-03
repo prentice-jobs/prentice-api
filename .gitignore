@@ -1,3 +1,8 @@
+# USER DEFINED GIT IGNORES
+ddl.sql
+gha-creds-*.json
+secrets/
+
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -169,5 +174,3 @@ poetry.toml
 
 # LSP config files
 pyrightconfig.json
-
-# OTHER

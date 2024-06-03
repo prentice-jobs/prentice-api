@@ -1,0 +1,55 @@
+name: Dev Deployment
+
+on:
+  push:
+    branches: 
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_PROJECT_REGION: ${{ secrets.GCP_PROJECT_REGION }}
+  GCP_REGISTRY_URL: ${{ secrets.GCP_REGISTRY_URL }}
+  
+  DOCKERFILE_LOCATION: ./Dockerfile
+  WORKING_DIRECTORY: .
+
+jobs:
+  build-push-artifact:
+    name: Build and push artifact to GAR
+    runs-on: ubuntu-22.04
+    # Add "id-token" with the intended permissions.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      
+      - id: auth
+        name: Authenticates to Google Cloud
+        uses: google-github-actions/auth@v1
+        with: 
+          credentials_json: ${{ secrets.GCP_GITHUB_SA_CREDENTIALS }}
+      
+      - name: Set up GCP Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+      
+      - name: Use Gcloud GCLI
+        run: gcloud info
+
+      - name: Docker Auth
+        run: |-
+          gcloud auth configure-docker ${{ env.GCP_PROJECT_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build Docker Image
+        run: docker build . --file ${{ env.DOCKERFILE_LOCATION }} --tag ${{ env.GCP_REGISTRY_URL }}
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+      
+      - name: Push Image to GAR
+        run: docker push ${{ env.GCP_REGISTRY_URL }}
+      
+              
