@@ -6,13 +6,13 @@ on:
       - dev
 
 env:
-  GCP_REGISTRY_URL: ${{ secrets.GCP_PROJECT_REGION}}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_GAR_NAME}}
+  GCP_REGISTRY_URL: ${{ secrets.GCP_PROJECT_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_GAR_NAME }}/${{ secrets.GCP_CLOUDRUN_SERVICE }}
   DOCKERFILE_LOCATION: ./Dockerfile
   WORKING_DIRECTORY: .
 
 jobs:
   build-push-deploy:
-    name: Build and push artifact to GAR
+    name: Build and push artifact to GARk
     runs-on: ubuntu-22.04
     # Add "id-token" with the intended permissions.
     permissions:
@@ -51,12 +51,22 @@ jobs:
           docker push ${{ secrets.GCP_REGISTRY_URL }}:${{ github.sha }}
           docker push ${{ secrets.GCP_REGISTRY_URL }}:latest
 
-      - name: Deploy latest image to Cloud Run via CLI
-        run: |
-          echo SERVICE_NAME $SERVICE_NAME
-          gcloud run deploy $SERVICE_NAME \
-            --image ${{ secrets.GCP_REGISTRY_URL }}:latest \
-            --platform managed \
-            --region ${{ secrets.GCP_PROJECT_REGION }}
-            --allow-unauthenticated
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ secrets.GCP_CLOUDRUN_SERVICE }}
+          region: ${{ secrets.GCP_PROJECT_REGION }}
+          image: ${{ secrets.GCP_REGISTRY_URL }}:latest
 
+      - name: Show Cloud Run output
+        run: echo ${{ steps.deploy.outputs.url }}
+
+      # - name: Deploy latest image to Cloud Run via CLI
+      #   run: |
+      #     echo SERVICE_NAME ${{ secrets.GCP_CLOUDRUN_SERVICE }}
+      #     gcloud run deploy ${{ secrets.GCP_CLOUDRUN_SERVICE }} \
+      #       --image ${{ secrets.GCP_REGISTRY_URL }}:latest \
+      #       --platform managed \
+      #       --region ${{ secrets.GCP_PROJECT_REGION }}
+      #       --allow-unauthenticated
