@@ -1,4 +1,4 @@
-import os
+from decouple import config
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -6,20 +6,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SUPABASE_HOST = os.getenv("SUPABASE_HOST")
-SUPABASE_PORT = os.getenv("SUPABASE_PORT")
-SUPABASE_DB = os.getenv("SUPABASE_DB")
-SUPABASE_USER = os.getenv("SUPABASE_USER")
-SUPABASE_PASSWORD = os.getenv("SUPABASE_PASSWORD")
+CLOUDSQL_HOST = config("CLOUDSQL_HOST")
+CLOUDSQL_PORT = config("CLOUDSQL_PORT")
+CLOUDSQL_DB = config("CLOUDSQL_DB")
+CLOUDSQL_USER = config("CLOUDSQL_USER")
+CLOUDSQL_PASSWORD = config("CLOUDSQL_PASSWORD")
 
 try:
+
     DATABASE_URL = (
         "postgresql+psycopg2://{username}:{password}@{host}:{port}/{db_name}".format(
-            host=SUPABASE_HOST,
-            port=SUPABASE_PORT,
-            db_name=SUPABASE_DB,
-            username=SUPABASE_USER,
-            password=SUPABASE_PASSWORD,
+            port=CLOUDSQL_PORT,
+            host=CLOUDSQL_HOST,
+            db_name=CLOUDSQL_DB,
+            username=CLOUDSQL_USER,
+            password=CLOUDSQL_PASSWORD,
         )
     )
 
@@ -38,7 +39,6 @@ Base = declarative_base()
 
 def get_db():
     db = SessionLocal()
-    print(db)
     try:
         yield db
     finally:
