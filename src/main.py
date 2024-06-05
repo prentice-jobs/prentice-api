@@ -12,6 +12,9 @@ from src.account import controller as account
 from src.company import controller as company
 from src.review import controller as review
 from src.salary import controller as salary
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Application
 app = FastAPI()
@@ -45,11 +48,13 @@ app.include_router(company.company_router)
 app.include_router(review.review_router)
 app.include_router(salary.salary_router)
 
+
 @app.get("/")
 def root():
     return {
         "message": "Hello World!"
     }
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

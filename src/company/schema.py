@@ -4,22 +4,61 @@ from datetime import datetime
 
 
 class CompanyBase(BaseModel):
-    display_name: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    is_deleted: Optional[bool] = None
+    display_name: str
+    logo_url: str
+    star_rating: float
+    company_sentiment: float
     description: Optional[str] = None
-    logo_url: Optional[str] = None
-    star_rating: Optional[float] = 0
-    tags: Optional[List[str]] = []
-    company_sentiment: Optional[int] = 0
-    review_count: Optional[int] = 0
+    tags: Optional[List[str]] = None
+    review_count: Optional[int] = None
+    company_review: Optional[List[UUID4]] = None
 
 
 class CompanyCreate(CompanyBase):
-    display_name: str
-    description: str
+    id: UUID4
 
 
 class CompanyUpdate(CompanyBase):
-    pass
+    id: UUID4
+
+
+class Company(CompanyBase):
+    id: UUID4
+    created_at: datetime
+    updated_at: datetime
+    is_deleted: Optional[bool] = None
+
+    class Config:
+        orm_mode = True
+
+
+class CompanyJSONRequestSchema(BaseModel):
+    id: UUID4
+    created_at: datetime
+    updated_at: datetime
+    is_deleted: Optional[bool] = None
+
+    display_name: str
+    logo_url: str
+    star_rating: float
+    company_sentiment: float
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    review_count: Optional[int] = None
+    company_review: Optional[List[UUID4]] = None
+
+
+class CompanyUpdate(CompanyBase):
+    id: UUID4
+    created_at: datetime
+    updated_at: datetime
+    is_deleted: Optional[bool] = None
+
+    class Config:
+        orm_mode = True
 
 
 class CompanyInDBBase(CompanyBase):
@@ -30,10 +69,6 @@ class CompanyInDBBase(CompanyBase):
 
     class Config:
         orm_mode = True
-
-
-class Company(CompanyInDBBase):
-    pass
 
 
 class CompanyReviewBase(BaseModel):
