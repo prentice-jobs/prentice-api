@@ -6,7 +6,7 @@ from uuid import UUID
 from typing import List
 
 from src.company import service, schema
-from src.utils.database import get_db
+from src.utils.db import get_db
 
 company_router = APIRouter()
 
