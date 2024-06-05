@@ -10,11 +10,11 @@ from sqlalchemy import (
 from src.utils.db import Base
 from src.utils.time import get_datetime_now_jkt
 
-class PrenticeBaseObjectModel(Base):
+class PrenticeBaseModel(Base):
     """
-    Abstract data model for Prentice
+    Abstract data model for Prentice, with the 4 universal fields
     """
-    
+
     __abstract__ = True
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4(), unique=True)

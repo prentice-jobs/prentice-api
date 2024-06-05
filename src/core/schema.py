@@ -5,9 +5,9 @@ from pydantic import (
     UUID4
 )
 
-class PrenticeBaseObject(BaseModel):
+class PrenticeBaseSchema(BaseModel):
     """
-    Abstract Pydantic schema for Prentice
+    Base Pydantic schema for Prentice
     """
 
     id: UUID4
