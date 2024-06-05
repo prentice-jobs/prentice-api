@@ -4,9 +4,6 @@ gha-creds-*.json
 secrets/
 .vscode/
 
-# Allow .env.example to be committed
-!.env.example
-
 # Disallow all other .env
 .env
 .env.dev
@@ -14,6 +11,9 @@ secrets/
 .git
 env/
 .venv/
+
+# Allow .env.example to be committed
+!.env.example
 
 
 */__pycache__

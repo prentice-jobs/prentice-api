@@ -12,7 +12,8 @@ from fastapi.encoders import jsonable_encoder
 from src.company.models import Companies
 from src.company.schema import CompanyCreate, CompanyUpdate
 from src.company.service import CompanyService
-from src.utils.database import get_db
+from src.company import service, schema
+from src.utils.db import get_db
 
 company_router = APIRouter()
 
