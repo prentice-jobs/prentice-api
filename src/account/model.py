@@ -21,8 +21,6 @@ from sqlalchemy.orm import (
 
 from src.core.model import PrenticeBaseModel
 
-USER_MODEL_NAME = "User"
-
 class User(PrenticeBaseModel):
     __tablename__ = "users"
 
@@ -32,14 +30,26 @@ class User(PrenticeBaseModel):
     display_name = Column(String(255), nullable=True)
     photo_url = Column(String, nullable=True)
     email_verified = Column(Boolean)
+
+    # Table relations
+    preferences = relationship(
+        "UserPreferences", 
+        uselist=False,  # Converts many-to-one -> one-to-one
+        back_populates="users"
+    )
     
 class UserPreferences(PrenticeBaseModel):
     __tablename__ = "user_preferences"
     
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    user = relationship(USER_MODEL_NAME, back_populates="preferences")
-    is_active = Column(Boolean)
-    
     role = Column(String(255), nullable=True)
     industry = Column(String(255), nullable=True)
     location = Column(String(255), nullable=True)
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    user = relationship(
+        "User", 
+        uselist=False,
+        back_populates="user_preferences"
+    )
+    is_active = Column(Boolean)
+    
