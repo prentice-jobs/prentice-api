@@ -25,7 +25,7 @@ class User(PrenticeBaseModel):
     __tablename__ = "users"
 
     # NOTE - firebase_uid is unique only across a single app - flush database before migrating to production firebase app
-    firebase_uid = Column(String(255), unique=True)
+    firebase_uid = Column(String(255))
     email = Column(String(255), unique=True)
     display_name = Column(String(255), nullable=True)
     photo_url = Column(String, nullable=True)
