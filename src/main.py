@@ -12,12 +12,11 @@ from src.account import controller as account
 from src.company import controller as company
 from src.review import controller as review
 from src.salary import controller as salary
-from dotenv import load_dotenv
-
-load_dotenv()
+from src.utils.settings import ENV_TYPE
 
 # Application
-app = FastAPI()
+OPENAPI_URL = "/openapi.json" if ENV_TYPE == "DEV" else ""
+app = FastAPI(openapi_url=OPENAPI_URL)
 
 # CORS
 app.add_middleware(
@@ -52,7 +51,7 @@ app.include_router(salary.salary_router)
 @app.get("/")
 def root():
     return {
-        "message": "Hello World!"
+        "message": "Prentice API is up and running"
     }
 
 
