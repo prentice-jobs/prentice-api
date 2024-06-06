@@ -35,7 +35,7 @@ class User(PrenticeBaseModel):
     preferences = relationship(
         "UserPreferences", 
         uselist=False,  # Converts many-to-one -> one-to-one
-        back_populates="users"
+        back_populates="user"
     )
     
 class UserPreferences(PrenticeBaseModel):
@@ -50,6 +50,6 @@ class UserPreferences(PrenticeBaseModel):
     user = relationship(
         "User", 
         uselist=False,
-        back_populates="user_preferences"
+        back_populates="preferences"
     )
     
