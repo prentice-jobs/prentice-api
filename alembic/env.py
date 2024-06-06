@@ -1,20 +1,42 @@
 import os
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import create_engine, pool, engine_from_config
 
 from alembic import context
+from src.utils.settings import (
+    POSTGRES_DB_HOST,
+    POSTGRES_DB_PORT,
+    POSTGRES_DB_NAME,
+    POSTGRES_DB_USER,
+    POSTGRES_DB_PASSWORD
+)
+from src.utils.db import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-section = config.config_ini_section
-config.set_section_option(section, "DB_USER", os.environ.get("DB_USER"))
-config.set_section_option(section, "DB_PASS", os.environ.get("DB_PASS"))
-config.set_section_option(section, "DB_HOST", os.environ.get("DB_HOST"))
-config.set_section_option(section, "DB_NAME", os.environ.get("DB_NAME"))
+# section = config.config_ini_section
+# config.set_section_option(section, "POSTGRES_DB_PORT", os.environ.get("POSTGRES_DB_PORT"))
+# config.set_section_option(section, "POSTGRES_DB_HOST", os.environ.get("POSTGRES_DB_HOST"))
+# config.set_section_option(section, "POSTGRES_DB_NAME", os.environ.get("POSTGRES_DB_NAME"))
+# config.set_section_option(section, "POSTGRES_DB_USER", os.environ.get("POSTGRES_DB_USER"))
+# config.set_section_option(section, "POSTGRES_DB_PASSWORD", os.environ.get("POSTGRES_DB_PASSWORD"))
+
+
+def get_db_url():
+    DATABASE_URL = (
+        "postgresql+psycopg2://{username}:{password}@{host}:{port}/{db_name}".format(
+            host=POSTGRES_DB_HOST,
+            port=POSTGRES_DB_PORT,
+            db_name=POSTGRES_DB_NAME,
+            username=POSTGRES_DB_USER,
+            password=POSTGRES_DB_PASSWORD,
+        )
+    )
+
+    return DATABASE_URL
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -45,7 +67,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_db_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -64,15 +86,17 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    connectable = create_engine(get_db_url())
+    # connectable = engine_from_config(
+    #     config.get_section(config.config_ini_section, {}),
+    #     prefix="sqlalchemy.",
+    #     poolclass=pool.NullPool,
+    # )
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, 
+            target_metadata=target_metadata,
         )
 
         with context.begin_transaction():
