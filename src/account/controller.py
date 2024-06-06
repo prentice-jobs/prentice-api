@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from typing_extensions import Annotated
 
 from fastapi import (
     APIRouter,
@@ -14,16 +15,17 @@ from fastapi.responses import (
 
 from fastapi.encoders import jsonable_encoder
 
-from enum import Enum
-
 from src.utils.db import get_db
+
 from src.account.schema import  (
     CheckUserRegisteredSchema,
     RegisterSchema,
-    RegisterResponseSchema
+    RegisterResponseSchema,
+    UserModelSchema,
 )
 
 from src.account.service import AccountService
+from src.account.security import get_current_user
 from src.account.exceptions import (
     UserAlreadyExistsException,
     RegistrationFailedException
@@ -42,15 +44,23 @@ def check_user_registered(
     payload: CheckUserRegisteredSchema = Body(),
     session = Depends(get_db),
 ):
-    return AccountService.check_user_is_registered(
-        session=session, 
-        user_email=payload.email,
-    )
+    try:
+        is_registered = AccountService.check_user_is_registered(
+            session=session, 
+            user_email=payload.email,
+        )
+
+        return is_registered
+    except Exception as err:
+        return JSONResponse(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            content=f"Error: ${err.__str__()}"
+        )
 
 @account_router.post("/register", status_code=HTTPStatus.CREATED, response_model=RegisterResponseSchema)
 def register(
     payload: RegisterSchema = Body(),
-    session = Depends(get_db)
+    session = Depends(get_db),
 ):
     try:
         new_user = AccountService.register_user(session=session, payload=payload)
@@ -76,4 +86,4 @@ def register(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
             content=err.__str__()
         )
-    
+

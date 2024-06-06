@@ -17,3 +17,8 @@ class RegistrationFailedException(Exception):
     def __init__(self, message="Error while registering new user"):
         super().__init__(message)
         self.message = message
+
+class FirebaseTokenVerificationException(Exception):
+    def __init__(self, message="Error while verifying JWT Token through Firebase Auth"):
+        super().__init__(message)
+        self.message = message

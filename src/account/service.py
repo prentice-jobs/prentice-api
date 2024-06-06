@@ -67,6 +67,21 @@ class AccountService:
         return user
     
     @staticmethod
+    def get_user_by_firebase_uid(
+        session: Session,
+        firebase_uid: str,
+    ) -> User | None:
+        """
+        Fetch a user from Prentice's User database based on their firebase_uid
+        """
+
+        user = session.query(User) \
+                .filter(User.firebase_uid == firebase_uid, User.is_deleted == False) \
+                .first()
+        
+        return user
+    
+    @staticmethod
     def _create_prentice_user_schema(
         payload: RegisterSchema,
     ) -> UserModelSchema:
