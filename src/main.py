@@ -1,5 +1,6 @@
-# Library imports\
+# Library imports
 import uvicorn
+from logger import logger
 
 from fastapi import (
     FastAPI,
@@ -47,6 +48,15 @@ app.include_router(company.company_router)
 app.include_router(review.review_router)
 app.include_router(salary.salary_router)
 
+# register event handlers here
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Startup Event Triggered")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Shutdown Event Triggered")
 
 @app.get("/")
 def root():
