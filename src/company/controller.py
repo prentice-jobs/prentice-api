@@ -15,10 +15,16 @@ from src.company.service import CompanyService
 from src.company import service, schema
 from src.utils.db import get_db
 
-company_router = APIRouter()
+VERSION = "v1"
+ENDPOINT = "company"
+
+company_router = APIRouter(
+    prefix=f"/{VERSION}/{ENDPOINT}",
+    tags=[ENDPOINT]
+)
 
 
-@company_router.get("/companies/",
+@company_router.get("/all",
                     response_description="Fetch all the companies",
                     status_code=http.HTTPStatus.OK,
                     )
@@ -28,7 +34,7 @@ def fetch_all_companies(db: Session = Depends(get_db)):
     return companies
 
 
-@company_router.get("/companies/{company_id}",
+@company_router.get("/{company_id}",
                     response_description="Fetch a specific company",
                     status_code=http.HTTPStatus.OK,
                     )
@@ -40,7 +46,7 @@ def fetch_company_by_id(company_id: UUID, db: Session = Depends(get_db)):
     return db_company
 
 
-@company_router.post("/company/", status_code=http.HTTPStatus.CREATED)
+@company_router.post("/", status_code=http.HTTPStatus.CREATED)
 def create_company(db: Session = Depends(get_db), payload: CompanyCreate = Body()):
     service = CompanyService()
 
@@ -65,7 +71,7 @@ def create_company(db: Session = Depends(get_db), payload: CompanyCreate = Body(
     return company
 
 
-@company_router.patch("/companies/{company_id}",
+@company_router.patch("/{company_id}",
                       status_code=http.HTTPStatus.OK,
                       )
 def update_company(company_id: str, company: CompanyUpdate, db: Session = Depends(get_db)):
@@ -78,7 +84,7 @@ def update_company(company_id: str, company: CompanyUpdate, db: Session = Depend
     return db_company
 
 
-@company_router.delete("/companies/{company_id}",
+@company_router.delete("/{company_id}",
                        status_code=http.HTTPStatus.OK,
                        )
 def delete_companies_by_id(company_id: UUID, db: Session = Depends(get_db)):
