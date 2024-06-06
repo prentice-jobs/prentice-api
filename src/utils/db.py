@@ -1,4 +1,4 @@
-import logging
+from prentice_logger import logger
 
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -31,7 +31,7 @@ engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-print("PostgreSQL Connection Established!")
+logger.info("PostgreSQL Connection Established!")
 
 def get_db():
     """This function is used to inject db_session dependency in every REST API requests"""
@@ -39,9 +39,10 @@ def get_db():
     db: Session = SessionLocal()
     try:
         yield db
+        logger.info("Yielding DB")
     except Exception as e:
         # Rollback the db if any exception occurs
-        logging.error(e)
+        logger.error("Error when yielding DB with SQLAlchemy")
         db.rollback()
     finally:
         # Close db session

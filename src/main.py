@@ -1,6 +1,6 @@
 # Library imports
 import uvicorn
-from logger import logger
+from prentice_logger import logger
 
 from fastapi import (
     FastAPI,
@@ -16,7 +16,8 @@ from src.salary import controller as salary
 from src.utils.settings import ENV_TYPE
 
 # Application
-OPENAPI_URL = "/openapi.json" if ENV_TYPE == "DEV" else ""
+OPENAPI_URL = "/openapi.json" if ENV_TYPE == "DEV" else None
+
 app = FastAPI(openapi_url=OPENAPI_URL)
 
 # CORS

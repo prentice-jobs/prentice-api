@@ -1,11 +1,10 @@
 import os
 from dotenv import load_dotenv
-
+from prentice_logger import logger
 load_dotenv(".env", override=True)
 
 ENV_TYPE = os.getenv("ENV")
-
-print(f"ENVIRONMENT: {ENV_TYPE}")
+logger.info(f"ENVIRONMENT: {ENV_TYPE}")
 
 POSTGRES_DB_HOST = os.getenv("POSTGRES_DB_HOST")
 POSTGRES_DB_PORT = os.getenv("POSTGRES_DB_PORT")
