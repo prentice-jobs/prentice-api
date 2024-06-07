@@ -1,18 +1,26 @@
 import uuid
+from http import HTTPStatus
+
 from pydantic import (
     EmailStr
 )
+
+from fastapi.encoders import jsonable_encoder
+
 from sqlalchemy.orm import Session
 
+from src.core.schema import GenericAPIResponseModel
 from src.account.model import User
 from src.account.schema import (
     RegisterSchema,
-    UserModelSchema
+    UserModelSchema,
+    RegisterResponseSchema,
 )
 from src.account.exceptions import (
     UserAlreadyExistsException,
     RegistrationFailedException,
 )
+from src.account.constants import messages as AccountMessages
 from src.utils.time import get_datetime_now_jkt
 
 class AccountService:   
@@ -38,15 +46,40 @@ class AccountService:
         cls,
         session: Session,
         payload: RegisterSchema
-    ) -> User:
+    ) -> GenericAPIResponseModel:
         user = cls.get_user_by_email(session=session, email=payload.email)
 
         if user:
             raise UserAlreadyExistsException(user_email=user.email)
         
         try:
-            return cls.create_prentice_user(session=session, payload=payload)
+            user = cls.create_prentice_user(session=session, payload=payload)
+
+            data = RegisterResponseSchema(
+                email=user.email, 
+                created_at=user.created_at
+            )
+
+            data_json = jsonable_encoder(data)
+
+            print("status", HTTPStatus.CREATED)
+            print("message: ", AccountMessages.SERVICE_CREATE_USER_SUCCESS)
+            print("data:", data)
+            print("data_json", data_json)
+
+            response = GenericAPIResponseModel(
+                status=HTTPStatus.CREATED,
+                message=AccountMessages.SERVICE_CREATE_USER_SUCCESS,
+                data=data_json,
+            )
+
+            print(response)
+
+            return response
         except RegistrationFailedException as err:
+            raise err
+        except Exception as err:
+            print(err)
             raise err
 
     # Utility methods

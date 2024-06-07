@@ -15,7 +15,9 @@ from fastapi.responses import (
 
 from fastapi.encoders import jsonable_encoder
 
+from src.core.schema import GenericAPIResponseModel
 from src.utils.db import get_db
+from src.utils.response_builder import build_api_response
 
 from src.account.schema import  (
     CheckUserRegisteredSchema,
@@ -57,19 +59,9 @@ def register(
     session = Depends(get_db),
 ):
     try:
-        new_user = AccountService.register_user(session=session, payload=payload)
+        response: GenericAPIResponseModel = AccountService.register_user(session=session, payload=payload)
         
-        response = RegisterResponseSchema(
-            email=new_user.email, 
-            created_at=new_user.created_at
-        )
-        
-        response_json = jsonable_encoder(response)
-
-        return JSONResponse(
-            status_code=HTTPStatus.CREATED,
-            content=response_json
-        )
+        return build_api_response(response)
     except UserAlreadyExistsException as err:
         return JSONResponse(
             status_code=HTTPStatus.CONFLICT,
@@ -81,3 +73,11 @@ def register(
             content=err.__str__()
         )
 
+@account_router.get("/", status_code=HTTPStatus.OK)
+def fetch_user_info(
+    user = Depends(get_current_user)
+):
+    # TODO
+    return {
+        "user": user
+    }
