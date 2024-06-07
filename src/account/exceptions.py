@@ -1,13 +1,9 @@
 from pydantic import EmailStr
 
 class UserAlreadyExistsException(Exception):
-    def __init__(self, message: str, user_email: EmailStr):
-        if message is None:
-            # Useful default error message
-            if user_email:
-                message = f"User ({user_email}) already exists!"
-            else:
-                message = "User already exists!"
+    def __init__(self, user_email: EmailStr = "", message: str = "User already exists!"):
+        if user_email:
+            message = f"User ({user_email}) already exists!"
 
         # Instantiate base `Exception` object
         super(UserAlreadyExistsException, self).__init__(message)
