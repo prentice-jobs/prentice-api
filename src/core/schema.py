@@ -1,9 +1,18 @@
+from typing import Optional, Any
 from datetime import datetime
 
 from pydantic import (
     BaseModel,
     UUID4
 )
+
+class GenericAPIResponseModel(BaseModel):
+    """Generic Response Model for all API Responses"""
+    status: Optional[int]
+    message: Optional[str]
+    data: Optional[Any] = None
+    error: Optional[str] = None
+    
 
 class PrenticeBaseSchema(BaseModel):
     """
