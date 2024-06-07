@@ -31,6 +31,9 @@ OPENAPI_URL = "/openapi.json" if ENV_TYPE == "DEV" else None
 
 app = FastAPI(openapi_url=OPENAPI_URL)
 
+# Middlewares
+# TODO add response ms counter - https://medium.com/@roy-pstr/fastapi-server-errors-and-logs-take-back-control-696405437983
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -72,6 +75,7 @@ async def shutdown_event():
 
 
 # Global Exception Handlers
+# https://fastapi.tiangolo.com/tutorial/handling-errors/
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(

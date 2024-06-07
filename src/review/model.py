@@ -38,7 +38,7 @@ class CompanyReview(PrenticeBaseModel):
     end_date = Column(TIMESTAMP(timezone=True))
     
     offer_letter_url = Column(String())
-    salary = Column(BigInteger())
+    annual_salary = Column(BigInteger())
     salary_currency = Column(String(3)) # ISO 4217
     
 

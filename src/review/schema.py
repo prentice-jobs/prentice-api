@@ -24,7 +24,7 @@ class CompanyReviewModelSchema(PrenticeBaseSchema):
     is_remote: bool
 
     tags: List[Annotated[str, Field(min_length=1, max_length=500)]]
-    star_rating: Annotated[float, Field(strict=True, le=5, ge=0, decimal_places=1)] # Float from 0.0 - 5.0
+    star_rating: Annotated[float, Field(strict=True, le=5, ge=0)] # Float from 0.0 - 5.0
     
     title: Annotated[str, Field(min_length=1, max_length=255)]
     description: Annotated[str, Field(min_length=0, max_length=5000)]
@@ -34,6 +34,6 @@ class CompanyReviewModelSchema(PrenticeBaseSchema):
     end_date: datetime
 
     offer_letter_url: str # URL to object storage for uploaded Offer Letter
-    salary: int # 64-bit Python-primitive integer type
+    annual_salary: int # 64-bit Python-primitive integer type
     salary_currency: Annotated[str, Field(min_length=1, max_length=3)] # ISO 4217 3-letter currency code
     

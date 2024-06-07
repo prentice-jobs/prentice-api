@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from src.core.schema import GenericAPIResponseModel
 from src.utils.time import get_datetime_now_jkt
 
+from src.review.constants.temporary import FEED_REVIEWS_DUMMY
+
 class ReviewService:
     # Business Logic methods
     @classmethod
@@ -19,7 +21,8 @@ class ReviewService:
         # TODO
         return GenericAPIResponseModel(
             status=HTTPStatus.OK,
-            message="Placeholder"
+            message="Successfully fetched Review recommendations",
+            data=FEED_REVIEWS_DUMMY,
         )
 
     # Utility methods

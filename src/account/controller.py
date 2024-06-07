@@ -63,6 +63,8 @@ def register(
         
         return build_api_response(response)
     except UserAlreadyExistsException as err:
+        # TODO refactor to use client errors `HTTPException` for non-server logic type errors 
+        # https://fastapi.tiangolo.com/reference/exceptions/
         return JSONResponse(
             status_code=HTTPStatus.CONFLICT,
             content=err.__str__()
