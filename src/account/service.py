@@ -10,6 +10,8 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from src.core.schema import GenericAPIResponseModel
+from src.utils.time import get_datetime_now_jkt
+
 from src.account.model import User
 from src.account.schema import (
     RegisterSchema,
@@ -21,7 +23,6 @@ from src.account.exceptions import (
     RegistrationFailedException,
 )
 from src.account.constants import messages as AccountMessages
-from src.utils.time import get_datetime_now_jkt
 
 class AccountService:   
     # Business logic methods
