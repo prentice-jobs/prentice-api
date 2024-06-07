@@ -62,10 +62,6 @@ class AccountService:
 
             data_json = jsonable_encoder(data)
 
-            print("status", HTTPStatus.CREATED)
-            print("message: ", AccountMessages.SERVICE_CREATE_USER_SUCCESS)
-            print("data:", data)
-            print("data_json", data_json)
 
             response = GenericAPIResponseModel(
                 status=HTTPStatus.CREATED,
@@ -73,13 +69,10 @@ class AccountService:
                 data=data_json,
             )
 
-            print(response)
-
             return response
         except RegistrationFailedException as err:
             raise err
         except Exception as err:
-            print(err)
             raise err
 
     # Utility methods
