@@ -15,8 +15,8 @@ from fastapi.responses import (
 
 from fastapi.encoders import jsonable_encoder
 
-from src.core.schema import GenericAPIResponseModel
 from src.utils.db import get_db
+from src.core.schema import GenericAPIResponseModel
 from src.utils.response_builder import build_api_response
 
 from src.account.schema import  (
@@ -53,7 +53,7 @@ def check_user_registered(
 
     return is_registered
 
-@account_router.post("/register", status_code=HTTPStatus.CREATED, response_model=RegisterResponseSchema)
+@account_router.post("/register", status_code=HTTPStatus.CREATED, response_model=GenericAPIResponseModel)
 def register(
     payload: RegisterSchema = Body(),
     session = Depends(get_db),
@@ -77,7 +77,7 @@ def register(
 def fetch_user_info(
     user = Depends(get_current_user)
 ):
-    # TODO
+    # TODO Integrate with Firebase ID Token
     return {
         "user": user
     }
