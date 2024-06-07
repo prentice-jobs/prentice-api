@@ -42,9 +42,7 @@ class AccountService:
         user = cls.get_user_by_email(session=session, email=payload.email)
 
         if user:
-            raise UserAlreadyExistsException(
-                user_email=user.email
-            )
+            raise UserAlreadyExistsException(user_email=user.email)
         
         try:
             return cls.create_prentice_user(session=session, payload=payload)

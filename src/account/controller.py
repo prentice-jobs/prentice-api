@@ -44,18 +44,12 @@ def check_user_registered(
     payload: CheckUserRegisteredSchema = Body(),
     session = Depends(get_db),
 ):
-    try:
-        is_registered = AccountService.check_user_is_registered(
-            session=session, 
-            user_email=payload.email,
-        )
+    is_registered = AccountService.check_user_is_registered(
+        session=session, 
+        user_email=payload.email,
+    )
 
-        return is_registered
-    except Exception as err:
-        return JSONResponse(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content=f"Error: ${err.__str__()}"
-        )
+    return is_registered
 
 @account_router.post("/register", status_code=HTTPStatus.CREATED, response_model=RegisterResponseSchema)
 def register(
