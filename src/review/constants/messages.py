@@ -1,0 +1,1 @@
+GCS_OBJECT_CREATE_SUCCESS = "Successfully uploaded file to Prentice"

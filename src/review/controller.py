@@ -31,9 +31,12 @@ from src.review.schema import (
     CreateCompanyReviewSchema,
 )
 
+from src.review.services.upload_service import UploadService
+
 # TODO delete and adjust with ML model response
 from src.review.constants.temporary import (
-    FEED_REVIEWS_DUMMY
+    USER_ID,
+    FEED_REVIEWS_DUMMY,
 )
 
 VERSION = "v1"
@@ -59,9 +62,14 @@ def create_new_review(
 ):
     pass
 
-@review_router.post("/upload/offer-letter", status_code=HTTPStatus.OK, response_class=GenericAPIResponseModel)
+@review_router.post("/offer", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def upload_offer_letter(
-    user: User = Depends(get_current_user),
-    offer_letter_file: UploadFile = File(...)
+    # user: User = Depends(get_current_user),
+    file: UploadFile = File(...)
 ):
-    pass
+    response = UploadService().upload_file(
+        file=file, 
+        user_id=USER_ID, # TODO still dummy data
+    )
+
+    return build_api_response(response)
