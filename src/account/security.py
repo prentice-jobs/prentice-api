@@ -41,21 +41,14 @@ def verify_firebase_token(credentials: HTTPAuthorizationCredentials) -> dict | N
         raise FirebaseTokenVerificationException(
             detail=f"Error verifying token: {err.__str__()}",
         ) # HTTPException
-
-def get_current_user(
-    session: Session = Depends(get_db),
-    firebase_user: str = Depends(verify_firebase_token),
-) -> User | None:
-    logger.debug(firebase_user)
-
-    firebase_uid = firebase_user["uid"]
-    user = AccountService.get_user_by_firebase_uid(session=session, firebase_uid=firebase_uid)
-    
-    return user 
     
 class JWTBearer(HTTPBearer):
     async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
         credentials: HTTPAuthorizationCredentials = await super(JWTBearer, self).__call__(request)
         
-        if credentials and verify_firebase_token(credentials):
-            return credentials.credentials
+        logger.debug(credentials)
+
+        firebase_user: (dict | None) = verify_firebase_token(credentials)
+        
+        if credentials and firebase_user:
+            return firebase_user # Firebase Token

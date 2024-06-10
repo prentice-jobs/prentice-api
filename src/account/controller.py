@@ -27,7 +27,7 @@ from src.account.schema import  (
 )
 
 from src.account.service import AccountService
-from src.account.security import get_current_user, verify_firebase_token, JWTBearer
+from src.account.security import verify_firebase_token, JWTBearer
 from src.account.exceptions import (
     UserAlreadyExistsException,
     RegistrationFailedException

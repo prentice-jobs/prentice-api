@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session
 
 from prentice_logger import logger
 
-from src.account.security import get_current_user
 from src.account.model import User
 from src.account.exceptions import UnauthorizedOperationException
 
