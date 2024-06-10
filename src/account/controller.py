@@ -65,15 +65,21 @@ def register(
     except UserAlreadyExistsException as err:
         # TODO refactor to use client errors `HTTPException` for non-server logic type errors 
         # https://fastapi.tiangolo.com/reference/exceptions/
-        return JSONResponse(
-            status_code=HTTPStatus.CONFLICT,
-            content=err.__str__()
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.CONFLICT,
+            message=err.__str__(),
+            error=err.__str__(),
         )
+
+        return build_api_response(response)
     except RegistrationFailedException as err:
-        return JSONResponse(
+        response = GenericAPIResponseModel(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content=err.__str__()
+            content=err.__str__(),
+            error=err.__str__(),
         )
+
+        return build_api_response(response)
 
 @account_router.get("/", status_code=HTTPStatus.OK)
 def fetch_user_info(

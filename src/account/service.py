@@ -54,7 +54,7 @@ class AccountService:
             raise UserAlreadyExistsException(user_email=user.email)
         
         try:
-            user = cls.create_prentice_user(session=session, payload=payload)
+            user = cls._create_prentice_user(session=session, payload=payload)
 
             data = RegisterResponseSchema(
                 email=user.email, 
@@ -62,7 +62,6 @@ class AccountService:
             )
 
             data_json = jsonable_encoder(data)
-
 
             response = GenericAPIResponseModel(
                 status=HTTPStatus.CREATED,
@@ -126,7 +125,7 @@ class AccountService:
         )
     
     @classmethod
-    def create_prentice_user(
+    def _create_prentice_user(
         cls,
         session: Session,
         payload: RegisterSchema,

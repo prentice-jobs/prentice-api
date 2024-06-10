@@ -21,6 +21,7 @@ from src.core.schema import GenericAPIResponseModel
 
 from src.account.model import User
 from src.account.security import get_current_user
+from src.account.exceptions import UnauthorizedOperationException
 
 from src.utils.db import get_db
 from src.utils.response_builder import build_api_response
@@ -30,6 +31,7 @@ from src.review.schema import (
     CompanyReviewModelSchema,
     CreateCompanyReviewSchema,
 )
+from src.review.exceptions import CreateCompanyReviewFailedException
 
 from src.review.services.upload_service import UploadService
 
@@ -59,8 +61,37 @@ def fetch_user_feed(
 def create_new_review(
     payload: CreateCompanyReviewSchema = Body(),
     session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    pass
+    try:
+        response: GenericAPIResponseModel = ReviewService.create_company_review(
+            payload=payload,
+            session=session,
+            user=user,
+        )
+
+        return build_api_response(response)
+    except UnauthorizedOperationException as err:
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.UNAUTHORIZED,
+            message="You are not logged in!",
+            error="Unauthorized: Failed to perform this operation. Try logging in with the required permissions."
+        )
+
+        return build_api_response(response)
+    except CreateCompanyReviewFailedException as err:
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=err.__str__(),
+            error=err.__str__(),
+        )
+
+        return build_api_response(response)
+    except Exception as err:
+        return JSONResponse(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            content=f"Something went wrong: {err.__str__()}"
+        )
 
 @review_router.post("/offer", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def upload_offer_letter(

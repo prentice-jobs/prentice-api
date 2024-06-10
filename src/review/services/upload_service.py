@@ -19,7 +19,7 @@ class UploadService:
         self.client = storage.Client()
         self.bucket_name = GCS_BUCKET_PRENTICE
         
-    def upload_file(self, file: UploadFile, user_id: UUID4) -> str:
+    def upload_file(self, file: UploadFile, user_id: UUID4) -> GenericAPIResponseModel:
         bucket = self.client.get_bucket(self.bucket_name)
         
         file_path = self.construct_file_path(user_id=user_id, file_name=file.filename)
