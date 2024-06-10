@@ -18,8 +18,11 @@ from fastapi.encoders import jsonable_encoder
 
 from starlette.middleware.cors import CORSMiddleware
 
-# Module imports
+# Utility imports
 from prentice_logger import logger
+from src.utils.firebase import firebase_client
+
+# Module imports
 from src.account import controller as account
 from src.company import controller as company
 from src.review import controller as review
