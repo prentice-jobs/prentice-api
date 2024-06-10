@@ -27,7 +27,7 @@ from src.account.schema import  (
 )
 
 from src.account.service import AccountService
-from src.account.security import get_current_user
+from src.account.security import get_current_user, verify_firebase_token, JWTBearer
 from src.account.exceptions import (
     UserAlreadyExistsException,
     RegistrationFailedException
@@ -82,8 +82,8 @@ def register(
         return build_api_response(response)
 
 @account_router.get("/", status_code=HTTPStatus.OK)
-def fetch_user_info(
-    user = Depends(get_current_user)
+async def fetch_user_info(
+    user = Depends(JWTBearer())
 ):
     # TODO Integrate with Firebase ID Token
     return {

@@ -34,7 +34,7 @@ def verify_firebase_token(credentials: HTTPAuthorizationCredentials) -> dict | N
         if not token:
             raise UnauthorizedOperationException()
         
-        user = firebase_auth.verify_id_token(token.credentials)
+        user = firebase_auth.verify_id_token(token)
         
         return user
     except Exception as err:
