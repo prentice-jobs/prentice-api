@@ -20,7 +20,8 @@ from starlette.middleware.cors import CORSMiddleware
 
 # Utility imports
 from prentice_logger import logger
-from src.utils.firebase import firebase_client
+
+from src.utils.firebase import Client as firebaseClient
 
 # Module imports
 from src.account import controller as account
@@ -33,6 +34,7 @@ from src.utils.settings import ENV_TYPE
 OPENAPI_URL = "/openapi.json" if ENV_TYPE == "DEV" else None
 
 app = FastAPI(openapi_url=OPENAPI_URL)
+firebase_client = firebaseClient
 
 # Middlewares
 # TODO add response ms counter - https://medium.com/@roy-pstr/fastapi-server-errors-and-logs-take-back-control-696405437983
