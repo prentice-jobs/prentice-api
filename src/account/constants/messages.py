@@ -1,0 +1,1 @@
+SERVICE_CREATE_USER_SUCCESS = "Successfully created user."
