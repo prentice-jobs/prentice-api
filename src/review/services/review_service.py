@@ -6,7 +6,8 @@ from fastapi import (
 )
 
 from pydantic import (
-    EmailStr
+    EmailStr,
+    UUID4
 )
 
 from fastapi.encoders import jsonable_encoder
@@ -27,7 +28,10 @@ from src.review.schema import (
     CreateCompanyReviewResponseSchema,
 )
 from src.review.model import CompanyReview
-from src.review.exceptions import CreateCompanyReviewFailedException
+from src.review.exceptions import (
+    CreateCompanyReviewFailedException,
+    CompanyReviewNotFoundException,
+)
 from src.review.constants import messages as ReviewMessages
 
 from src.review.constants.temporary import FEED_REVIEWS_DUMMY
@@ -45,6 +49,26 @@ class ReviewService:
             data=FEED_REVIEWS_DUMMY,
         )
     
+    @classmethod
+    def fetch_review(
+        cls, 
+        review_id: UUID4,
+        session: Session,
+        user: User,
+    ):
+        review = session.query(CompanyReview) \
+                .filter(CompanyReview.id == review_id, CompanyReview.is_deleted == False) \
+                .first()
+        
+        if review is None:
+            raise CompanyReviewNotFoundException()
+        
+        return GenericAPIResponseModel(
+            status=HTTPStatus.OK,
+            message="Successfully fetched Company Review",
+            data=review,
+        )
+        
     @classmethod
     def create_company_review(
         cls, 
@@ -93,7 +117,9 @@ class ReviewService:
         session: Session,
         user: User,
     ):
-        company_review_schema = cls._create_company_review_schema(payload=payload, user=user)
+        company_review_schema = cls._create_company_review_schema(
+            payload=payload, user=user
+        )
             
         company_review_obj = CompanyReview(**company_review_schema.model_dump())
 
@@ -107,8 +133,9 @@ class ReviewService:
             session.rollback()
             raise CreateCompanyReviewFailedException(err.__str__())
 
-    @staticmethod
+    @classmethod
     def _create_company_review_schema(
+        cls,
         payload: CreateCompanyReviewSchema,
         user: User,
     ):
@@ -117,7 +144,7 @@ class ReviewService:
         
         time_now = get_datetime_now_jkt()
 
-        return CompanyReviewModelSchema(
+        company_review_model_schema = CompanyReviewModelSchema(
             id=uuid.uuid4(),
             created_at=time_now,
             updated_at=time_now,
@@ -141,3 +168,5 @@ class ReviewService:
             
             author_id=user.id,
         )
+
+        return company_review_model_schema
