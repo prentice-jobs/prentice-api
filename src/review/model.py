@@ -22,8 +22,8 @@ from src.core.model import PrenticeBaseModel
 
 class CompanyReview(PrenticeBaseModel):
     __tablename__ = "company_reviews"
-    company_id = Column(UUID(as_uuid=True))
-    author_id = Column(UUID(as_uuid=True))
+    company_id = Column(UUID())
+    author_id = Column(UUID())
     location = Column(String(200))
     is_remote = Column(Boolean())
     

@@ -22,7 +22,7 @@ class CreateCompanyReviewSchema(BaseModel):
     location: Annotated[str, Field(max_length=200)]
     is_remote: bool
 
-    tags: List[Annotated[str, Field(max_length=500)]]
+    tags: List[Annotated[str, Field(max_length=495)]] # Decrease limit into 495 in case need to add `[` or `]`
     star_rating: Annotated[float, Field(strict=True, le=5, ge=0)] # Float from 0.0 - 5.0
 
     title: Annotated[str, Field(min_length=1, max_length=255)]
