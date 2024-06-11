@@ -50,3 +50,12 @@ class CreateCompanyReviewResponseSchema(BaseModel):
     
     title: Annotated[str, Field(min_length=1, max_length=255)]
     
+class CreateCommentSchema(BaseModel):
+    review_id: UUID4
+    content: Annotated[str, Field(max_length=1000)]
+
+class CommentModelSchema(CreateCommentSchema, PrenticeBaseSchema):
+    """Schema for creating CompanyReviewComment SQLAlchemy objects"""
+    author_id: UUID4
+    likes_count: int
+

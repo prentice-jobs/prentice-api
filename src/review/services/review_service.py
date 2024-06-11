@@ -123,7 +123,8 @@ class ReviewService:
         user: User,
     ):
         company_review_schema = cls._create_company_review_schema(
-            payload=payload, user=user
+            payload=payload, 
+            user=user,
         )
             
         company_review_obj = CompanyReview(**company_review_schema.model_dump())
@@ -144,9 +145,6 @@ class ReviewService:
         payload: CreateCompanyReviewSchema,
         user: User,
     ):
-        if not user:
-            raise UnauthorizedOperationException()
-        
         time_now = get_datetime_now_jkt()
 
         company_review_model_schema = CompanyReviewModelSchema(

@@ -32,16 +32,18 @@ from src.utils.db import get_db
 from src.utils.response_builder import build_api_response
 
 from src.review.services.review_service import ReviewService
+from src.review.services.upload_service import UploadService
+from src.review.services.comment_service import CommentService
+
 from src.review.schema import (
-    CompanyReviewModelSchema,
     CreateCompanyReviewSchema,
+    CreateCommentSchema,
 )
 from src.review.exceptions import (
     CreateCompanyReviewFailedException, 
     CompanyReviewNotFoundException,
 )
 
-from src.review.services.upload_service import UploadService
 
 # TODO delete and adjust with ML model response
 from src.review.constants.temporary import (
@@ -124,7 +126,21 @@ def fetch_review(
         )
 
         return build_api_response(response)
-    
+
+@review_router.post("/comment", status_code=HTTPStatus.CREATED, response_model=GenericAPIResponseModel)
+def create_comment(
+    payload: CreateCommentSchema = Body(),
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+): 
+    response: GenericAPIResponseModel = CommentService.create_comment(
+        payload=payload,
+        session=session,
+        user=user,
+    )
+
+    return build_api_response(response)
+
 @review_router.post("/offer", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def upload_offer_letter(
     file: UploadFile = File(...),
