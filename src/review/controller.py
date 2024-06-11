@@ -21,6 +21,7 @@ from src.core.schema import GenericAPIResponseModel
 
 from src.account.model import User
 from src.account.exceptions import UnauthorizedOperationException
+from src.account.security import get_current_user
 
 from src.utils.db import get_db
 from src.utils.response_builder import build_api_response
@@ -60,10 +61,9 @@ def fetch_user_feed(
 def create_new_review(
     payload: CreateCompanyReviewSchema = Body(),
     session: Session = Depends(get_db),
-    # user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     try:
-        user=None
         response: GenericAPIResponseModel = ReviewService.create_company_review(
             payload=payload,
             session=session,

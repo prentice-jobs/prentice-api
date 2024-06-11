@@ -24,13 +24,10 @@ from src.account.model import User
 from src.account.schema import  (
     CheckUserRegisteredSchema,
     RegisterSchema,
-    RegisterResponseSchema,
-    UserModelSchema,
-    FirebaseUserResponseSchema,
 )
 
 from src.account.service import AccountService
-from src.account.security import verify_firebase_token, JWTBearer
+from src.account.security import get_current_user
 from src.account.exceptions import (
     UserAlreadyExistsException,
     RegistrationFailedException
@@ -85,14 +82,8 @@ def register(
         return build_api_response(response)
 
 @account_router.get("/", status_code=HTTPStatus.OK)
-async def fetch_user_info(
-    firebase_user: FirebaseUserResponseSchema = Depends(JWTBearer()),
-    session: Session = Depends(get_db),
+def fetch_user_info(
+    prentice_user: User = Depends(get_current_user),
 ):
-    prentice_user: User = AccountService.get_user_by_firebase_uid(
-        session=session,
-        firebase_uid=firebase_user.user.uid
-    )
-    return {
-        "user": prentice_user
-    }
+    
+    return prentice_user

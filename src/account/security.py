@@ -48,7 +48,9 @@ def verify_firebase_token(credentials: HTTPAuthorizationCredentials) -> dict | N
         ) # HTTPException
     
 def convert_firebase_dict_to_pydantic(firebase_user_dict: dict) -> FirebaseUserResponseSchema:
-    # Convert response `dict` to Pydantic object
+    """
+    Convert Firebase response `dict` to Pydantic object
+    """
     try:
         firebase_user = FirebaseUserResponseSchema(
             user=FirebaseUserSchema(
@@ -79,6 +81,9 @@ def convert_firebase_dict_to_pydantic(firebase_user_dict: dict) -> FirebaseUserR
         raise KeyError(f"Failed to serialize Firebase User dict: {err.__str__()}")
         
 class JWTBearer(HTTPBearer):
+    """
+    Custom HTTPBearer class to represent JWT Bearer Tokens
+    """
     async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
         credentials: HTTPAuthorizationCredentials = await super(JWTBearer, self).__call__(request)
         
@@ -95,3 +100,17 @@ class JWTBearer(HTTPBearer):
         
         if credentials and firebase_user:
             return firebase_user # Firebase Token
+
+def get_current_user(
+    firebase_user: FirebaseUserResponseSchema = Depends(JWTBearer()),
+    session: Session = Depends(get_db),
+):
+    """
+    Core security middleware that performs user authorization and returns a custom Prentice User
+    """
+    prentice_user: User = AccountService.get_user_by_firebase_uid(
+        session=session,
+        firebase_uid=firebase_user.user.uid
+    )
+
+    return prentice_user
