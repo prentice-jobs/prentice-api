@@ -1,3 +1,4 @@
+import uuid
 from http import HTTPStatus
 from typing_extensions import Annotated
 from pydantic import (
@@ -100,15 +101,16 @@ def create_new_review(
             content=f"Something went wrong: {err.__str__()}"
         )
 
-@review_router.get("/{review_id}", status_code=HTTPStatus.OK, response_class=GenericAPIResponseModel)
+@review_router.get("/{review_id}", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def fetch_review(
-    review_id: UUID4,
+    review_id: str,
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     try:
+        review_uuid = uuid.UUID(review_id)
         response: GenericAPIResponseModel = ReviewService.fetch_review(
-            review_id=review_id, 
+            review_id=review_uuid, 
             session=session,
             user=user,
         )

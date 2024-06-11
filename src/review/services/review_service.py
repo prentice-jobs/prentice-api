@@ -56,18 +56,23 @@ class ReviewService:
         session: Session,
         user: User,
     ):
-        review = session.query(CompanyReview) \
-                .filter(CompanyReview.id == review_id, CompanyReview.is_deleted == False) \
-                .first()
-        
-        if review is None:
-            raise CompanyReviewNotFoundException()
-        
-        return GenericAPIResponseModel(
-            status=HTTPStatus.OK,
-            message="Successfully fetched Company Review",
-            data=review,
-        )
+        try:
+            review = session.query(CompanyReview) \
+                    .filter(CompanyReview.id == review_id, CompanyReview.is_deleted == False) \
+                    .first()
+            
+            if review is None:
+                raise CompanyReviewNotFoundException()
+            
+            data_json = jsonable_encoder(review)
+            
+            return GenericAPIResponseModel(
+                status=HTTPStatus.OK,
+                message="Successfully fetched Company Review",
+                data=data_json,
+            )
+        except Exception as err:
+            raise Exception(f"Error while fetching review: {err.__str__()}")
         
     @classmethod
     def create_company_review(
