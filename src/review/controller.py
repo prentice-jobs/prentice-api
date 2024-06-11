@@ -1,6 +1,10 @@
 from http import HTTPStatus
 from typing_extensions import Annotated
+from pydantic import (
+    UUID4,
+)
 from sqlalchemy.orm import Session
+
 from fastapi import (
     APIRouter,
     Request,
@@ -31,7 +35,10 @@ from src.review.schema import (
     CompanyReviewModelSchema,
     CreateCompanyReviewSchema,
 )
-from src.review.exceptions import CreateCompanyReviewFailedException
+from src.review.exceptions import (
+    CreateCompanyReviewFailedException, 
+    CompanyReviewNotFoundException,
+)
 
 from src.review.services.upload_service import UploadService
 
@@ -82,8 +89,8 @@ def create_new_review(
     except CreateCompanyReviewFailedException as err:
         response = GenericAPIResponseModel(
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
-            message=err.__str__(),
-            error=err.__str__(),
+            message=err.message,
+            error=err.message,
         )
 
         return build_api_response(response)
@@ -93,10 +100,33 @@ def create_new_review(
             content=f"Something went wrong: {err.__str__()}"
         )
 
+@review_router.get("/{review_id}", status_code=HTTPStatus.OK, response_class=GenericAPIResponseModel)
+def fetch_review(
+    review_id: UUID4,
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        response: GenericAPIResponseModel = ReviewService.fetch_review(
+            review_id=review_id, 
+            session=session,
+            user=user,
+        )
+        
+        return build_api_response(response)
+    except CompanyReviewNotFoundException as err:
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.NOT_FOUND,
+            message=err.message,
+            error=err.message,
+        )
+
+        return build_api_response(response)
+    
 @review_router.post("/offer", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def upload_offer_letter(
-    # user: User = Depends(get_current_user),
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
 ):
     response = UploadService().upload_file(
         file=file, 
