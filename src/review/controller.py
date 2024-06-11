@@ -132,7 +132,7 @@ def upload_offer_letter(
 ):
     response = UploadService().upload_file(
         file=file, 
-        user_id=USER_ID, # TODO still dummy data
+        user_id=user.id,
     )
 
     return build_api_response(response)
