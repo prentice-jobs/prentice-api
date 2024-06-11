@@ -9,6 +9,8 @@ from sqlalchemy import (
     Column,
     UUID,
     Float,
+    SmallInteger,
+    Integer,
     BigInteger,
     String,
     TIMESTAMP
@@ -44,9 +46,21 @@ class CompanyReview(PrenticeBaseModel):
 
 class ReviewSentiment(PrenticeBaseModel):
     __tablename__ = "review_sentiments"
+    
+    review_id = Column(UUID())
+    sentiment_score = Column(SmallInteger()) # SentimentScore{ -1, 0, +1 }
+    sentiment = Column(String(30))
 
 class ReviewComment(PrenticeBaseModel):
     __tablename__ = "review_comments"
 
+    review_id = Column(UUID())
+    author_id = Column(UUID())
+    likes_count = Column(Integer())
+
 class ReviewCommentLike(PrenticeBaseModel):
     __tablename__ = "review_comment_likes"
+
+    review_comment_id = Column(UUID())
+    liker_id = Column(UUID())
+
