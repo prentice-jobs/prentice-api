@@ -41,6 +41,7 @@ def upgrade() -> None:
         sa.Column('review_id', sa.UUID()),
         sa.Column('author_id', sa.UUID()),
         sa.Column('likes_count', sa.Integer()),
+        sa.Column('content', sa.String(1000))
     )
 
     op.create_table(

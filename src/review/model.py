@@ -57,6 +57,7 @@ class ReviewComment(PrenticeBaseModel):
     review_id = Column(UUID())
     author_id = Column(UUID())
     likes_count = Column(Integer())
+    content = Column(String(1000))
 
 class ReviewCommentLike(PrenticeBaseModel):
     __tablename__ = "review_comment_likes"
