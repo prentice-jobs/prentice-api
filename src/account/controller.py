@@ -1,5 +1,6 @@
 from http import HTTPStatus
 from typing_extensions import Annotated
+from sqlalchemy.orm import Session
 
 from fastapi import (
     APIRouter,
@@ -18,12 +19,14 @@ from fastapi.encoders import jsonable_encoder
 from src.utils.db import get_db
 from src.core.schema import GenericAPIResponseModel
 from src.utils.response_builder import build_api_response
+from src.account.model import User
 
 from src.account.schema import  (
     CheckUserRegisteredSchema,
     RegisterSchema,
     RegisterResponseSchema,
     UserModelSchema,
+    FirebaseUserResponseSchema,
 )
 
 from src.account.service import AccountService
@@ -83,9 +86,13 @@ def register(
 
 @account_router.get("/", status_code=HTTPStatus.OK)
 async def fetch_user_info(
-    user = Depends(JWTBearer())
+    firebase_user: FirebaseUserResponseSchema = Depends(JWTBearer()),
+    session: Session = Depends(get_db),
 ):
-    # TODO Integrate with Firebase ID Token
+    prentice_user: User = AccountService.get_user_by_firebase_uid(
+        session=session,
+        firebase_uid=firebase_user.user.uid
+    )
     return {
-        "user": user
+        "user": prentice_user
     }

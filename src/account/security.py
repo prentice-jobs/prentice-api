@@ -13,6 +13,11 @@ from src.account.exceptions import (
 )
 from src.account.service import AccountService
 from src.account.model import User
+from src.account.schema import (
+    FirebaseUserSchema,
+    FirebaseUserResponseSchema,
+    UserFirebaseFieldSchema,
+)
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 jwt_security = HTTPBearer(auto_error=True)
@@ -42,13 +47,51 @@ def verify_firebase_token(credentials: HTTPAuthorizationCredentials) -> dict | N
             detail=f"Error verifying token: {err.__str__()}",
         ) # HTTPException
     
+def convert_firebase_dict_to_pydantic(firebase_user_dict: dict) -> FirebaseUserResponseSchema:
+    # Convert response `dict` to Pydantic object
+    try:
+        firebase_user = FirebaseUserResponseSchema(
+            user=FirebaseUserSchema(
+                name=firebase_user_dict["name"],
+                picture=firebase_user_dict["picture"],
+
+                iss=firebase_user_dict["iss"],
+                aud=firebase_user_dict["aud"],
+                auth_time=firebase_user_dict["auth_time"],
+                user_id=firebase_user_dict["user_id"],
+
+                sub=firebase_user_dict["sub"],
+                iat=firebase_user_dict["iat"],
+                exp=firebase_user_dict["exp"],
+
+                email=firebase_user_dict["email"],
+                email_verified=firebase_user_dict["email_verified"],
+                firebase=UserFirebaseFieldSchema(
+                    identities=firebase_user_dict["firebase"]["identities"],
+                    sign_in_provider=firebase_user_dict["firebase"]["sign_in_provider"],
+                ),
+                uid=firebase_user_dict["uid"],
+            )
+        )
+
+        return firebase_user
+    except KeyError as err:
+        raise KeyError(f"Failed to serialize Firebase User dict: {err.__str__()}")
+        
 class JWTBearer(HTTPBearer):
     async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
         credentials: HTTPAuthorizationCredentials = await super(JWTBearer, self).__call__(request)
         
         logger.debug(credentials)
 
-        firebase_user: (dict | None) = verify_firebase_token(credentials)
+        firebase_user_dict: (dict | None) = verify_firebase_token(credentials)
+        
+        if not firebase_user_dict:
+            raise UnauthorizedOperationException()
+        
+        firebase_user: FirebaseUserResponseSchema = convert_firebase_dict_to_pydantic(
+            firebase_user_dict=firebase_user_dict,
+        )
         
         if credentials and firebase_user:
             return firebase_user # Firebase Token
