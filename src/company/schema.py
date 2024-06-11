@@ -59,36 +59,3 @@ class CompanyUpdate(CompanyBase):
 
     class Config:
         orm_mode = True
-
-
-class CompanyInDBBase(CompanyBase):
-    id: UUID4
-    created_at: datetime
-    updated_at: datetime
-    is_deleted: bool
-
-    class Config:
-        orm_mode = True
-
-
-class CompanyReviewBase(BaseModel):
-    review_text: Optional[str] = None
-
-
-class CompanyReviewCreate(CompanyReviewBase):
-    review_text: str
-
-
-class CompanyReviewUpdate(CompanyReviewBase):
-    pass
-
-
-class CompanyReviewInDBBase(CompanyReviewBase):
-    id: int
-
-    class Config:
-        orm_mode = True
-
-
-class CompanyReview(CompanyReviewInDBBase):
-    pass
