@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from fastapi.encoders import jsonable_encoder
 from src.salary.models import Salaries
-from src.constants.temporary import FEED_REVIEWS_DUMMY
+from src.review.constants.temporary import FEED_REVIEWS_DUMMY
 
 
 class SalaryService:
