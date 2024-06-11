@@ -10,6 +10,8 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from src.core.schema import GenericAPIResponseModel
+from src.utils.time import get_datetime_now_jkt
+
 from src.account.model import User
 from src.account.schema import (
     RegisterSchema,
@@ -21,7 +23,6 @@ from src.account.exceptions import (
     RegistrationFailedException,
 )
 from src.account.constants import messages as AccountMessages
-from src.utils.time import get_datetime_now_jkt
 
 class AccountService:   
     # Business logic methods
@@ -53,7 +54,7 @@ class AccountService:
             raise UserAlreadyExistsException(user_email=user.email)
         
         try:
-            user = cls.create_prentice_user(session=session, payload=payload)
+            user = cls._create_prentice_user(session=session, payload=payload)
 
             data = RegisterResponseSchema(
                 email=user.email, 
@@ -61,7 +62,6 @@ class AccountService:
             )
 
             data_json = jsonable_encoder(data)
-
 
             response = GenericAPIResponseModel(
                 status=HTTPStatus.CREATED,
@@ -125,7 +125,7 @@ class AccountService:
         )
     
     @classmethod
-    def create_prentice_user(
+    def _create_prentice_user(
         cls,
         session: Session,
         payload: RegisterSchema,

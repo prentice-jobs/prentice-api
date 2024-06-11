@@ -18,8 +18,12 @@ from fastapi.encoders import jsonable_encoder
 
 from starlette.middleware.cors import CORSMiddleware
 
-# Module imports
+# Utility imports
 from prentice_logger import logger
+
+from src.utils.firebase import Client as firebaseClient
+
+# Module imports
 from src.account import controller as account
 from src.company import controller as company
 from src.review import controller as review
@@ -30,6 +34,10 @@ from src.utils.settings import ENV_TYPE
 OPENAPI_URL = "/openapi.json" if ENV_TYPE == "DEV" else None
 
 app = FastAPI(openapi_url=OPENAPI_URL)
+firebase_client = firebaseClient
+
+# Middlewares
+# TODO add response ms counter - https://medium.com/@roy-pstr/fastapi-server-errors-and-logs-take-back-control-696405437983
 
 # CORS
 app.add_middleware(
@@ -72,6 +80,7 @@ async def shutdown_event():
 
 
 # Global Exception Handlers
+# https://fastapi.tiangolo.com/tutorial/handling-errors/
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(

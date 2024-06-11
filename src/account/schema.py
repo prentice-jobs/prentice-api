@@ -26,3 +26,30 @@ class RegisterResponseSchema(BaseModel):
 
 class UserModelSchema(RegisterSchema, PrenticeBaseSchema):
     pass
+
+# Firebase Schemas
+class UserFirebaseFieldSchema(BaseModel):
+    identities: dict
+    sign_in_provider: str
+
+class FirebaseUserSchema(BaseModel):
+    name: str
+    picture: str
+    
+    iss: str
+    aud: str
+    auth_time: int
+    user_id: str
+    
+    sub: str
+    iat: int
+    exp: int
+    
+    email: EmailStr
+    email_verified: bool
+    firebase: UserFirebaseFieldSchema
+    
+    uid: str
+
+class FirebaseUserResponseSchema(BaseModel):
+    user: FirebaseUserSchema

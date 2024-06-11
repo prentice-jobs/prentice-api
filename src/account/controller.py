@@ -1,5 +1,6 @@
 from http import HTTPStatus
 from typing_extensions import Annotated
+from sqlalchemy.orm import Session
 
 from fastapi import (
     APIRouter,
@@ -18,12 +19,11 @@ from fastapi.encoders import jsonable_encoder
 from src.utils.db import get_db
 from src.core.schema import GenericAPIResponseModel
 from src.utils.response_builder import build_api_response
+from src.account.model import User
 
 from src.account.schema import  (
     CheckUserRegisteredSchema,
     RegisterSchema,
-    RegisterResponseSchema,
-    UserModelSchema,
 )
 
 from src.account.service import AccountService
@@ -63,21 +63,27 @@ def register(
         
         return build_api_response(response)
     except UserAlreadyExistsException as err:
-        return JSONResponse(
-            status_code=HTTPStatus.CONFLICT,
-            content=err.__str__()
+        # TODO refactor to use client errors `HTTPException` for non-server logic type errors 
+        # https://fastapi.tiangolo.com/reference/exceptions/
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.CONFLICT,
+            message=err.__str__(),
+            error=err.__str__(),
         )
+
+        return build_api_response(response)
     except RegistrationFailedException as err:
-        return JSONResponse(
+        response = GenericAPIResponseModel(
             status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content=err.__str__()
+            content=err.__str__(),
+            error=err.__str__(),
         )
+
+        return build_api_response(response)
 
 @account_router.get("/", status_code=HTTPStatus.OK)
 def fetch_user_info(
-    user = Depends(get_current_user)
+    prentice_user: User = Depends(get_current_user),
 ):
-    # TODO Integrate with Firebase ID Token
-    return {
-        "user": user
-    }
+    
+    return prentice_user

@@ -26,6 +26,7 @@ def build_api_response(generic_response: GenericAPIResponseModel) -> JSONRespons
         )
     except Exception as exc:
         logger.error(msg=f"Exception occuring in build_api_response: {exc}")
+        
         return JSONResponse(
             status_code=generic_response.status or 500,
             content=generic_response.error or "Error while building API Response.",

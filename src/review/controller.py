@@ -1,17 +1,154 @@
+import uuid
+from http import HTTPStatus
+from typing_extensions import Annotated
+from pydantic import (
+    UUID4,
+)
+from sqlalchemy.orm import Session
+
 from fastapi import (
-  APIRouter,
-  Request,
-  Response,
-  Depends,
-  Body
+    APIRouter,
+    Request,
+    Response,
+    Depends,
+    Body,
+
+    File,
+    UploadFile,
 )
 
-from enum import Enum
+from fastapi.responses import (
+    JSONResponse,
+)
+
+from fastapi.encoders import jsonable_encoder
+from src.core.schema import GenericAPIResponseModel
+
+from src.account.model import User
+from src.account.exceptions import UnauthorizedOperationException
+from src.account.security import get_current_user
+
+from src.utils.db import get_db
+from src.utils.response_builder import build_api_response
+
+from src.review.services.review_service import ReviewService
+from src.review.services.upload_service import UploadService
+from src.review.services.comment_service import CommentService
+
+from src.review.schema import (
+    CreateCompanyReviewSchema,
+    CreateCommentSchema,
+)
+from src.review.exceptions import (
+    CreateCompanyReviewFailedException, 
+    CompanyReviewNotFoundException,
+)
+
+
+# TODO delete and adjust with ML model response
+from src.review.constants.temporary import (
+    USER_ID,
+    FEED_REVIEWS_DUMMY,
+)
 
 VERSION = "v1"
 ENDPOINT = "review"
 
 review_router = APIRouter(
-  prefix=f"/{VERSION}/{ENDPOINT}",
-  tags=[ENDPOINT]
+    prefix=f"/{VERSION}/{ENDPOINT}",
+    tags=[ENDPOINT]
 )
+
+@review_router.get("/feed", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
+def fetch_user_feed(
+    # TODO add arguments based on ML model spec
+):
+    response: GenericAPIResponseModel = ReviewService.fetch_feed()
+    
+    return build_api_response(response)
+
+@review_router.post("/", status_code=HTTPStatus.CREATED, response_model=GenericAPIResponseModel)
+def create_new_review(
+    payload: CreateCompanyReviewSchema = Body(),
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        response: GenericAPIResponseModel = ReviewService.create_company_review(
+            payload=payload,
+            session=session,
+            user=user,
+        )
+
+        return build_api_response(response)
+    except UnauthorizedOperationException as err:
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.UNAUTHORIZED,
+            message="You are not logged in!",
+            error="Unauthorized: Failed to perform this operation. Try logging in with the required permissions."
+        )
+
+        return build_api_response(response)
+    except CreateCompanyReviewFailedException as err:
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=err.message,
+            error=err.message,
+        )
+
+        return build_api_response(response)
+    except Exception as err:
+        return JSONResponse(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            content=f"Something went wrong: {err.__str__()}"
+        )
+
+@review_router.get("/{review_id}", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
+def fetch_review(
+    review_id: str,
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        review_uuid = uuid.UUID(review_id)
+        response: GenericAPIResponseModel = ReviewService.fetch_review(
+            review_id=review_uuid, 
+            session=session,
+            user=user,
+        )
+        
+        return build_api_response(response)
+    except CompanyReviewNotFoundException as err:
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.NOT_FOUND,
+            message=err.message,
+            error=err.message,
+        )
+
+        return build_api_response(response)
+
+@review_router.post("/comment", status_code=HTTPStatus.CREATED, response_model=GenericAPIResponseModel)
+def create_comment(
+    payload: CreateCommentSchema = Body(),
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+): 
+    response: GenericAPIResponseModel = CommentService.create_comment(
+        payload=payload,
+        session=session,
+        user=user,
+    )
+
+    return build_api_response(response)
+
+@review_router.post("/offer", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
+def upload_offer_letter(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+):
+    response = UploadService().upload_file(
+        file=file, 
+        user_id=user.id,
+    )
+
+    return build_api_response(response)
