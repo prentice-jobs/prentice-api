@@ -34,16 +34,23 @@ from src.utils.response_builder import build_api_response
 from src.review.services.review_service import ReviewService
 from src.review.services.upload_service import UploadService
 from src.review.services.comment_service import CommentService
+from src.review.services.likes_service import LikesService
 
 from src.review.schema import (
     CreateCompanyReviewSchema,
     CreateCommentSchema,
+    CreateCommentLikeSchema,
 )
 from src.review.exceptions import (
     CreateCompanyReviewFailedException, 
     CompanyReviewNotFoundException,
+    CreateReviewCommentFailedException,
+    CreateCommentLikeFailedException,
 )
 
+from src.review.utils import CommentLikeActions
+
+from prentice_logger import logger
 
 # TODO delete and adjust with ML model response
 from src.review.constants.temporary import (
@@ -98,10 +105,8 @@ def create_new_review(
 
         return build_api_response(response)
     except Exception as err:
-        return JSONResponse(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content=f"Something went wrong: {err.__str__()}"
-        )
+        logger.error(err.__str__())
+        raise err
 
 @review_router.get("/{review_id}", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def fetch_review(
@@ -126,6 +131,9 @@ def fetch_review(
         )
 
         return build_api_response(response)
+    except Exception as err:
+        logger.error(err.__str__())
+        raise err
 
 @review_router.post("/comment", status_code=HTTPStatus.CREATED, response_model=GenericAPIResponseModel)
 def create_comment(
@@ -133,22 +141,72 @@ def create_comment(
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ): 
-    response: GenericAPIResponseModel = CommentService.create_comment(
-        payload=payload,
-        session=session,
-        user=user,
-    )
+    try:
+        response: GenericAPIResponseModel = CommentService.create_comment(
+            payload=payload,
+            session=session,
+            user=user,
+        )
 
-    return build_api_response(response)
+        return build_api_response(response)
+    except CreateReviewCommentFailedException as err:
+        response = GenericAPIResponseModel(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            content=err.__str__(),
+            error=err.__str__(),
+        )
+
+        return build_api_response(response)
+    except Exception as err:
+        logger.error(err.__str__())
+        raise err
+
+@review_router.post("/comment/like", status_code=HTTPStatus.CREATED, response_model=GenericAPIResponseModel)
+def like_comment(
+    payload: CreateCommentLikeSchema = Body(),
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        # Create new Like objact in DB
+        response: GenericAPIResponseModel = LikesService.create_comment_like(
+            payload=payload,
+            session=session,
+            user=user,
+        )
+
+        # Increment Review Comment's likes_count value
+        CommentService.update_comment_like(
+            review_comment_id=payload.review_comment_id,
+            session=session,
+            action=CommentLikeActions.INCREMENT,
+        )
+
+        return build_api_response(response)
+    except CreateCommentLikeFailedException as err:
+        response = GenericAPIResponseModel(
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            content=err.__str__(),
+            error=err.__str__(),
+        )
+
+        return build_api_response(response)
+    except Exception as err:
+        logger.error(err.__str__())
+        raise err
 
 @review_router.post("/offer", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def upload_offer_letter(
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
 ):
-    response = UploadService().upload_file(
-        file=file, 
-        user_id=user.id,
-    )
+    try:
+        response: GenericAPIResponseModel = UploadService().upload_file(
+            file=file, 
+            user_id=user.id,
+        )
 
-    return build_api_response(response)
+        return build_api_response(response)
+    except Exception as err:
+        logger.error(err.__str__())
+        raise err

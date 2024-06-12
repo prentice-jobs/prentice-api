@@ -16,8 +16,9 @@ from src.core.schema import (
     PrenticeBaseSchema
 )
 
+# Simple Models
 class CreateCompanyReviewSchema(BaseModel):
-    """Schema for user's input when creating new Company Review"""
+    """Schema for user's input when creating new Company Review objects"""
     company_id: UUID4
     location: Annotated[str, Field(max_length=200)]
     is_remote: bool
@@ -49,8 +50,10 @@ class CreateCompanyReviewResponseSchema(BaseModel):
     company_id: UUID4
     
     title: Annotated[str, Field(min_length=1, max_length=255)]
-    
+
+
 class CreateCommentSchema(BaseModel):
+    """Schema for user input in creating CompanyReview Comment objects """
     review_id: UUID4
     content: Annotated[str, Field(max_length=1000)]
 
@@ -59,3 +62,10 @@ class CommentModelSchema(CreateCommentSchema, PrenticeBaseSchema):
     author_id: UUID4
     likes_count: int
 
+class CreateCommentLikeSchema(BaseModel):
+    """Schema for user input in creating CompanyReview Comment Likes"""
+    review_comment_id: UUID4
+
+class CommentLikeModelSchema(CreateCommentLikeSchema, PrenticeBaseSchema):
+    liker_id: UUID4
+    

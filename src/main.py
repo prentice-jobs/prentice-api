@@ -85,7 +85,7 @@ async def shutdown_event():
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-        content="Something went wrong."
+        content=f"Something went wrong: {exc.__str__()}"
     )
 
 
