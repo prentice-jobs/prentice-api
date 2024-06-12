@@ -73,7 +73,8 @@ class ReviewService:
             review_comments = session.query(ReviewComment) \
                                 .filter(
                                     ReviewComment.review_id == review.id, 
-                                    ReviewComment.is_deleted == False) \
+                                    ReviewComment.is_deleted == False
+                                    ) \
                                 .order_by(ReviewComment.created_at) \
                                 .all()
                                 

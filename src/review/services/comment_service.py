@@ -1,4 +1,5 @@
 import uuid
+from enum import Enum
 from http import HTTPStatus
 
 from fastapi import (
@@ -20,7 +21,6 @@ from src.account.model import User
 from src.account.exceptions import UnauthorizedOperationException
 
 from src.core.schema import GenericAPIResponseModel
-from src.utils.time import get_datetime_now_jkt
 
 from src.review.schema import (
     CreateCommentSchema,
@@ -34,6 +34,8 @@ from src.review.exceptions import (
 from src.review.constants import messages as ReviewMessages
 
 from src.review.constants.temporary import FEED_REVIEWS_DUMMY
+
+from src.review.utils import CommentLikeActions
 
 from src.utils.time import get_datetime_now_jkt
 
@@ -64,6 +66,37 @@ class CommentService:
             return response
         except CreateReviewCommentFailedException as err:
             raise err
+        except Exception as err:
+            logger.error(f"Unknown exception occurred: {err.__str__()}")
+            
+            raise err
+        
+    @classmethod
+    def update_comment_like(
+        cls,
+        review_comment_id: UUID4,
+        session: Session,
+        action = CommentLikeActions,
+    ) -> None:
+        """Increments or decrements a comment's like"""
+        try:
+            if action == CommentLikeActions.INCREMENT:
+                ACTION_VALUE = 1
+            else:
+                ACTION_VALUE = -1
+
+            review_comment = session.query(ReviewComment) \
+                            .filter(
+                                ReviewComment.id == review_comment_id,
+                                ReviewComment.is_deleted == False
+                                ) \
+                            .one()
+            
+            
+            new_likes_count = review_comment.likes_count + ACTION_VALUE
+            review_comment.likes_count = new_likes_count
+
+            session.commit()
         except Exception as err:
             logger.error(f"Unknown exception occurred: {err.__str__()}")
             
