@@ -16,6 +16,7 @@ from src.core.schema import (
     PrenticeBaseSchema
 )
 
+# Simple Models
 class CreateCompanyReviewSchema(BaseModel):
     """Schema for user's input when creating new Company Review"""
     company_id: UUID4
@@ -49,7 +50,8 @@ class CreateCompanyReviewResponseSchema(BaseModel):
     company_id: UUID4
     
     title: Annotated[str, Field(min_length=1, max_length=255)]
-    
+
+
 class CreateCommentSchema(BaseModel):
     review_id: UUID4
     content: Annotated[str, Field(max_length=1000)]

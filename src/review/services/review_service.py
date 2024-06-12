@@ -23,11 +23,16 @@ from src.core.schema import GenericAPIResponseModel
 from src.utils.time import get_datetime_now_jkt
 
 from src.review.schema import (
+    # Simple
     CreateCompanyReviewSchema,
     CompanyReviewModelSchema,
     CreateCompanyReviewResponseSchema,
 )
-from src.review.model import CompanyReview
+from src.review.model import (
+    CompanyReview,
+    ReviewComment,
+)
+
 from src.review.exceptions import (
     CreateCompanyReviewFailedException,
     CompanyReviewNotFoundException,
@@ -59,12 +64,25 @@ class ReviewService:
         try:
             review = session.query(CompanyReview) \
                     .filter(CompanyReview.id == review_id, CompanyReview.is_deleted == False) \
+                    .order_by(CompanyReview.created_at) \
                     .first()
             
             if review is None:
                 raise CompanyReviewNotFoundException()
             
-            data_json = jsonable_encoder(review)
+            review_comments = session.query(ReviewComment) \
+                                .filter(
+                                    ReviewComment.review_id == review.id, 
+                                    ReviewComment.is_deleted == False) \
+                                .order_by(ReviewComment.created_at) \
+                                .all()
+                                
+            data = {
+                "review": review,
+                "comments": review_comments,
+            }
+
+            data_json = jsonable_encoder(data)
             
             return GenericAPIResponseModel(
                 status=HTTPStatus.OK,
