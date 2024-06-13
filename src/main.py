@@ -28,7 +28,7 @@ from src.account import controller as account
 from src.company import controller as company
 from src.review import controller as review
 from src.salary import controller as salary
-from src.utils.settings import ENV_TYPE
+from src.utils.settings import ENV_TYPE, PORT
 
 # Application
 OPENAPI_URL = "/openapi.json" if ENV_TYPE == "DEV" else None
@@ -97,4 +97,4 @@ def root():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=PORT if PORT else 8080)
