@@ -51,22 +51,22 @@ jobs:
           docker push ${{ env.GCP_REGISTRY_URL }}:${{ github.sha }}
           docker push ${{ env.GCP_REGISTRY_URL }}:latest
 
-      - name: Deploy to Cloud Run
-        id: deploy
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ secrets.GCP_CLOUDRUN_SERVICE }}
-          region: ${{ secrets.GCP_PROJECT_REGION }}
-          image: ${{ env.GCP_REGISTRY_URL }}:latest
+      # - name: Deploy to Cloud Run
+      #   id: deploy
+      #   uses: google-github-actions/deploy-cloudrun@v2
+      #   with:
+      #     service: ${{ secrets.GCP_CLOUDRUN_SERVICE }}
+      #     region: ${{ secrets.GCP_PROJECT_REGION }}
+      #     image: ${{ env.GCP_REGISTRY_URL }}:latest
 
-      - name: Show Cloud Run output
-        run: echo ${{ steps.deploy.outputs.url }}
+      # - name: Show Cloud Run output
+      #   run: echo ${{ steps.deploy.outputs.url }}
 
-      # - name: Deploy latest image to Cloud Run via CLI
-      #   run: |
-      #     echo SERVICE_NAME ${{ secrets.GCP_CLOUDRUN_SERVICE }}
-      #     gcloud run deploy ${{ secrets.GCP_CLOUDRUN_SERVICE }} \
-      #       --image ${{ env.GCP_REGISTRY_URL }}:latest \
-      #       --platform managed \
-      #       --region ${{ secrets.GCP_PROJECT_REGION }}
-      #       --allow-unauthenticated
+      - name: Deploy latest image to Cloud Run via CLI
+        run: |
+          echo SERVICE_NAME ${{ secrets.GCP_CLOUDRUN_SERVICE }}
+          gcloud run deploy ${{ secrets.GCP_CLOUDRUN_SERVICE }} \
+            --image ${{ env.GCP_REGISTRY_URL }}:latest \
+            --platform managed \
+            --region ${{ secrets.GCP_PROJECT_REGION }}
+            --allow-unauthenticated
