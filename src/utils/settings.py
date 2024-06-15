@@ -6,7 +6,7 @@ load_dotenv(".env", override=True)
 ENV_TYPE = os.getenv("ENV")
 logger.info(f"ENVIRONMENT: {ENV_TYPE}")
 
-PORT = os.getenv("PORT")
+PORT = os.getenv("PORT", 8080)
 POSTGRES_DB_HOST = os.getenv("POSTGRES_DB_HOST")
 POSTGRES_DB_PORT = os.getenv("POSTGRES_DB_PORT")
 POSTGRES_DB_NAME = os.getenv("POSTGRES_DB_NAME")

@@ -195,6 +195,20 @@ def like_comment(
         logger.error(err.__str__())
         raise err
 
+@review_router.post("/comment/unlike", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
+def unlike_comment(
+    payload: CreateCommentLikeSchema = Body(),
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    response: GenericAPIResponseModel = LikesService.delete_comment_like(
+        payload=payload,
+        session=session,
+        user=user,
+    )
+
+    return build_api_response(response)
+
 @review_router.post("/offer", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def upload_offer_letter(
     file: UploadFile = File(...),
