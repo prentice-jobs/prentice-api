@@ -1,15 +1,9 @@
 import uuid
 from http import HTTPStatus
-from typing_extensions import Annotated
-from pydantic import (
-    UUID4,
-)
 from sqlalchemy.orm import Session
 
 from fastapi import (
     APIRouter,
-    Request,
-    Response,
     Depends,
     Body,
 
@@ -17,15 +11,10 @@ from fastapi import (
     UploadFile,
 )
 
-from fastapi.responses import (
-    JSONResponse,
-)
 
-from fastapi.encoders import jsonable_encoder
 from src.core.schema import GenericAPIResponseModel
 
 from src.account.model import User
-from src.account.exceptions import UnauthorizedOperationException
 from src.account.security import get_current_user
 
 from src.utils.db import get_db
@@ -40,11 +29,6 @@ from src.review.schema import (
     CreateCompanyReviewSchema,
     CreateCommentSchema,
     CreateCommentLikeSchema,
-)
-from src.review.exceptions import (
-    CreateCompanyReviewFailedException, 
-    CompanyReviewNotFoundException,
-    CreateReviewCommentFailedException,
 )
 
 from src.review.utils import CommentLikeActions
@@ -103,25 +87,13 @@ def create_comment(
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ): 
-    try:
-        response: GenericAPIResponseModel = CommentService.create_comment(
-            payload=payload,
-            session=session,
-            user=user,
-        )
+    response: GenericAPIResponseModel = CommentService.create_comment(
+        payload=payload,
+        session=session,
+        user=user,
+    )
 
-        return build_api_response(response)
-    except CreateReviewCommentFailedException as err:
-        response = GenericAPIResponseModel(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content=err.__str__(),
-            error=err.__str__(),
-        )
-
-        return build_api_response(response)
-    except Exception as err:
-        logger.error(err.__str__())
-        raise err
+    return build_api_response(response)
 
 @review_router.post("/comment/like", status_code=HTTPStatus.CREATED, response_model=GenericAPIResponseModel)
 def like_comment(
@@ -165,13 +137,9 @@ def upload_offer_letter(
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
 ):
-    try:
-        response: GenericAPIResponseModel = UploadService().upload_file(
-            file=file, 
-            user_id=user.id,
-        )
+    response: GenericAPIResponseModel = UploadService().upload_file(
+        file=file, 
+        user_id=user.id,
+    )
 
-        return build_api_response(response)
-    except Exception as err:
-        logger.error(err.__str__())
-        raise err
+    return build_api_response(response)
