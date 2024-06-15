@@ -18,6 +18,7 @@ from prentice_logger import logger
 
 from src.account.model import User
 from src.account.exceptions import UnauthorizedOperationException
+from src.account.constants import messages as AccountMessages
 
 from src.core.schema import GenericAPIResponseModel
 from src.utils.time import get_datetime_now_jkt
@@ -91,8 +92,24 @@ class ReviewService:
                 message="Successfully fetched Company Review",
                 data=data_json,
             )
+        except CompanyReviewNotFoundException as err:
+            response = GenericAPIResponseModel(
+                status=HTTPStatus.NOT_FOUND,
+                message=ReviewMessages.COMPANY_REVIEW_NOT_FOUND,
+                error=ReviewMessages.COMPANY_REVIEW_NOT_FOUND,
+            )
+
+            return response
         except Exception as err:
-            raise Exception(f"Error while fetching review: {err.__str__()}")
+            logger.error(f"Error while fetching review: {err.__str__()}")
+        
+            response = GenericAPIResponseModel(
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                message=ReviewMessages.FOR_YOU_FEED_ERROR,
+                error=ReviewMessages.FOR_YOU_FEED_ERROR,
+            )
+
+            return response
         
     @classmethod
     def create_company_review(
@@ -126,13 +143,31 @@ class ReviewService:
 
             return response
         except UnauthorizedOperationException as err:
-            raise err
+            response = GenericAPIResponseModel(
+                status=HTTPStatus.UNAUTHORIZED,
+                message=AccountMessages.UNAUTHORIZED_ACTION_RECOMMENDATION,
+                error=AccountMessages.UNAUTHORIZED_ACTION,
+            )
+
+            return response
         except CreateCompanyReviewFailedException as err:
-            raise err
+            response = GenericAPIResponseModel(
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                message=ReviewMessages.COMPANY_REVIEW_CREATE_FAILED,
+                error=err.__str__(),
+            )
+            
+            return response
         except Exception as err:
             logger.error(f"Unknown exception occurred: {err.__str__()}")
             
-            raise err
+            response = GenericAPIResponseModel(
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                message=ReviewMessages.GENERAL_ERROR,
+                error=err.__str__(),
+            )
+            
+            return response
 
     # Utility methods
     @classmethod

@@ -74,33 +74,13 @@ def create_new_review(
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    try:
-        response: GenericAPIResponseModel = ReviewService.create_company_review(
-            payload=payload,
-            session=session,
-            user=user,
-        )
+    response: GenericAPIResponseModel = ReviewService.create_company_review(
+        payload=payload,
+        session=session,
+        user=user,
+    )
 
-        return build_api_response(response)
-    except UnauthorizedOperationException as err:
-        response = GenericAPIResponseModel(
-            status=HTTPStatus.UNAUTHORIZED,
-            message="You are not logged in!",
-            error="Unauthorized: Failed to perform this operation. Try logging in with the required permissions."
-        )
-
-        return build_api_response(response)
-    except CreateCompanyReviewFailedException as err:
-        response = GenericAPIResponseModel(
-            status=HTTPStatus.INTERNAL_SERVER_ERROR,
-            message=err.message,
-            error=err.message,
-        )
-
-        return build_api_response(response)
-    except Exception as err:
-        logger.error(err.__str__())
-        raise err
+    return build_api_response(response)
 
 @review_router.get("/{review_id}", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def fetch_review(
@@ -108,26 +88,14 @@ def fetch_review(
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    try:
-        review_uuid = uuid.UUID(review_id)
-        response: GenericAPIResponseModel = ReviewService.fetch_review(
-            review_id=review_uuid, 
-            session=session,
-            user=user,
-        )
-        
-        return build_api_response(response)
-    except CompanyReviewNotFoundException as err:
-        response = GenericAPIResponseModel(
-            status=HTTPStatus.NOT_FOUND,
-            message=err.message,
-            error=err.message,
-        )
-
-        return build_api_response(response)
-    except Exception as err:
-        logger.error(err.__str__())
-        raise err
+    review_uuid = uuid.UUID(review_id)
+    response: GenericAPIResponseModel = ReviewService.fetch_review(
+        review_id=review_uuid, 
+        session=session,
+        user=user,
+    )
+    
+    return build_api_response(response)
 
 @review_router.post("/comment", status_code=HTTPStatus.CREATED, response_model=GenericAPIResponseModel)
 def create_comment(
