@@ -21,24 +21,19 @@ from sqlalchemy.orm.exc import (
 from prentice_logger import logger
 
 from src.account.model import User
-from src.account.exceptions import UnauthorizedOperationException
 
 from src.core.schema import GenericAPIResponseModel
 
 from src.review.schema import (
-    CreateCommentSchema,
-    CommentModelSchema,
     CreateCommentLikeSchema,
     CommentLikeModelSchema,
 )
 
-from src.review.model import ReviewComment, ReviewCommentLike
+from src.review.model import ReviewCommentLike
 from src.review.exceptions import (
     CreateCommentLikeFailedException,
 )
 from src.review.constants import messages as ReviewMessages
-
-from src.review.constants.temporary import FEED_REVIEWS_DUMMY
 
 from src.utils.time import get_datetime_now_jkt
 
@@ -68,11 +63,23 @@ class LikesService:
 
             return response
         except CreateCommentLikeFailedException as err:
-            raise err
+            response = GenericAPIResponseModel(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                content=err.__str__(),
+                error=err.__str__(),
+            )
+
+            return response
         except Exception as err:
             logger.error(f"Unknown exception occurred: {err.__str__()}")
             
-            raise err
+            response = GenericAPIResponseModel(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                content=err.__str__(),
+                error=err.__str__(),
+            )
+
+            return response
         
     @classmethod
     def delete_comment_like(

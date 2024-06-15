@@ -45,18 +45,12 @@ from src.review.exceptions import (
     CreateCompanyReviewFailedException, 
     CompanyReviewNotFoundException,
     CreateReviewCommentFailedException,
-    CreateCommentLikeFailedException,
 )
 
 from src.review.utils import CommentLikeActions
 
 from prentice_logger import logger
 
-# TODO delete and adjust with ML model response
-from src.review.constants.temporary import (
-    USER_ID,
-    FEED_REVIEWS_DUMMY,
-)
 
 VERSION = "v1"
 ENDPOINT = "review"
@@ -167,33 +161,22 @@ def like_comment(
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    try:
-        # Create new Like objact in DB
-        response: GenericAPIResponseModel = LikesService.create_comment_like(
-            payload=payload,
-            session=session,
-            user=user,
-        )
+    # Create new Like objact in DB
+    response: GenericAPIResponseModel = LikesService.create_comment_like(
+        payload=payload,
+        session=session,
+        user=user,
+    )
 
-        # Increment Review Comment's likes_count value
-        CommentService.update_comment_like(
-            review_comment_id=payload.review_comment_id,
-            session=session,
-            action=CommentLikeActions.INCREMENT,
-        )
+    # Increment Review Comment's likes_count value
+    CommentService.update_comment_like(
+        review_comment_id=payload.review_comment_id,
+        session=session,
+        action=CommentLikeActions.INCREMENT,
+    )
 
-        return build_api_response(response)
-    except CreateCommentLikeFailedException as err:
-        response = GenericAPIResponseModel(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content=err.__str__(),
-            error=err.__str__(),
-        )
+    return build_api_response(response)
 
-        return build_api_response(response)
-    except Exception as err:
-        logger.error(err.__str__())
-        raise err
 
 @review_router.post("/comment/unlike", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def unlike_comment(

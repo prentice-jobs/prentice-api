@@ -39,6 +39,7 @@ from src.review.exceptions import (
 )
 from src.review.constants import messages as ReviewMessages
 
+# TODO delete and adjust with ML model response
 from src.review.constants.temporary import FEED_REVIEWS_DUMMY
 
 from src.utils.time import get_datetime_now_jkt
