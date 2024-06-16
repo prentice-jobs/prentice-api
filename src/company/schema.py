@@ -21,6 +21,10 @@ class CompanyCreate(CompanyBase):
     id: UUID4
 
 
+class CompanyName(BaseModel):
+    display_name: str
+
+
 class CompanyUpdate(CompanyBase):
     id: UUID4
 
