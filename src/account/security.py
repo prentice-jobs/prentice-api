@@ -91,8 +91,6 @@ class JWTBearer(HTTPBearer):
     async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
         credentials: HTTPAuthorizationCredentials = await super(JWTBearer, self).__call__(request)
         
-        logger.debug(credentials)
-        
         try:
             firebase_user_dict: (dict | None) = verify_firebase_token(credentials)
             

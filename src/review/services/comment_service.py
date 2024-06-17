@@ -65,11 +65,23 @@ class CommentService:
             
             return response
         except CreateReviewCommentFailedException as err:
-            raise err
+            response = GenericAPIResponseModel(
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                message=ReviewMessages.REVIEW_COMMENT_CREATE_FAILED,
+                error=ReviewMessages.REVIEW_COMMENT_CREATE_FAILED,
+            )
+
+            return response
         except Exception as err:
             logger.error(f"Unknown exception occurred: {err.__str__()}")
             
-            raise err
+            response = GenericAPIResponseModel(
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+                message=ReviewMessages.REVIEW_COMMENT_CREATE_FAILED,
+                error=ReviewMessages.REVIEW_COMMENT_CREATE_FAILED,
+            )
+
+            return response
         
     @classmethod
     def update_comment_like(

@@ -13,28 +13,27 @@ from pydantic import (
 from fastapi.encoders import jsonable_encoder
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import (
+    NoResultFound,
+    MultipleResultsFound,
+)
 
 from prentice_logger import logger
 
 from src.account.model import User
-from src.account.exceptions import UnauthorizedOperationException
 
 from src.core.schema import GenericAPIResponseModel
 
 from src.review.schema import (
-    CreateCommentSchema,
-    CommentModelSchema,
     CreateCommentLikeSchema,
     CommentLikeModelSchema,
 )
 
-from src.review.model import ReviewComment, ReviewCommentLike
+from src.review.model import ReviewCommentLike
 from src.review.exceptions import (
     CreateCommentLikeFailedException,
 )
 from src.review.constants import messages as ReviewMessages
-
-from src.review.constants.temporary import FEED_REVIEWS_DUMMY
 
 from src.utils.time import get_datetime_now_jkt
 
@@ -64,11 +63,80 @@ class LikesService:
 
             return response
         except CreateCommentLikeFailedException as err:
-            raise err
+            response = GenericAPIResponseModel(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                content=err.__str__(),
+                error=err.__str__(),
+            )
+
+            return response
         except Exception as err:
             logger.error(f"Unknown exception occurred: {err.__str__()}")
             
-            raise err
+            response = GenericAPIResponseModel(
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                content=err.__str__(),
+                error=err.__str__(),
+            )
+
+            return response
+        
+    @classmethod
+    def delete_comment_like(
+        cls,
+        payload: CreateCommentLikeSchema, # The "Unlike" action has same params as "Like"
+        session: Session,
+        user: User,
+    ):
+        try:
+            review_comment_id = payload.review_comment_id
+
+            review_comment_like_obj = session.query(ReviewCommentLike) \
+                                        .filter(
+                                            ReviewCommentLike.review_comment_id == review_comment_id,
+                                            ReviewCommentLike.liker_id == user.id,
+                                            ReviewCommentLike.is_deleted == False,
+                                        ) \
+                                        .one()
+            
+            # Since likes amount can be massive, 
+            # we should directly delete unliked posts from our db
+            session.delete(review_comment_like_obj)
+            session.commit()
+
+            data_json = jsonable_encoder(review_comment_like_obj)
+            
+            response = GenericAPIResponseModel(
+                status=HTTPStatus.OK,
+                message=ReviewMessages.LIKE_COMMENT_DELETE_SUCCESS,
+                data=data_json,
+            )
+
+            return response
+        except NoResultFound as err:
+            response = GenericAPIResponseModel(
+                status_code=HTTPStatus.NOT_FOUND,
+                content=err.__str__(),
+                error=err.__str__(),
+            )
+
+            return response
+        except MultipleResultsFound as err:
+            response = GenericAPIResponseModel(
+                status_code=HTTPStatus.BAD_REQUEST,
+                content=err.__str__(),
+                error=err.__str__(),
+            )
+
+            return response
+        except Exception as err:
+            response = GenericAPIResponseModel(
+                status_code=HTTPStatus.BAD_REQUEST,
+                content=f"Unknown error occurred: {err.__str__()}",
+                error=f"Unknown error occurred: {err.__str__()}",
+            )
+
+            return response
     
     # Utility methods
     @classmethod

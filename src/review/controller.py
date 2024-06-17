@@ -1,15 +1,9 @@
 import uuid
 from http import HTTPStatus
-from typing_extensions import Annotated
-from pydantic import (
-    UUID4,
-)
 from sqlalchemy.orm import Session
 
 from fastapi import (
     APIRouter,
-    Request,
-    Response,
     Depends,
     Body,
 
@@ -17,15 +11,10 @@ from fastapi import (
     UploadFile,
 )
 
-from fastapi.responses import (
-    JSONResponse,
-)
 
-from fastapi.encoders import jsonable_encoder
 from src.core.schema import GenericAPIResponseModel
 
 from src.account.model import User
-from src.account.exceptions import UnauthorizedOperationException
 from src.account.security import get_current_user
 
 from src.utils.db import get_db
@@ -41,22 +30,11 @@ from src.review.schema import (
     CreateCommentSchema,
     CreateCommentLikeSchema,
 )
-from src.review.exceptions import (
-    CreateCompanyReviewFailedException, 
-    CompanyReviewNotFoundException,
-    CreateReviewCommentFailedException,
-    CreateCommentLikeFailedException,
-)
 
 from src.review.utils import CommentLikeActions
 
 from prentice_logger import logger
 
-# TODO delete and adjust with ML model response
-from src.review.constants.temporary import (
-    USER_ID,
-    FEED_REVIEWS_DUMMY,
-)
 
 VERSION = "v1"
 ENDPOINT = "review"
@@ -80,33 +58,13 @@ def create_new_review(
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    try:
-        response: GenericAPIResponseModel = ReviewService.create_company_review(
-            payload=payload,
-            session=session,
-            user=user,
-        )
+    response: GenericAPIResponseModel = ReviewService.create_company_review(
+        payload=payload,
+        session=session,
+        user=user,
+    )
 
-        return build_api_response(response)
-    except UnauthorizedOperationException as err:
-        response = GenericAPIResponseModel(
-            status=HTTPStatus.UNAUTHORIZED,
-            message="You are not logged in!",
-            error="Unauthorized: Failed to perform this operation. Try logging in with the required permissions."
-        )
-
-        return build_api_response(response)
-    except CreateCompanyReviewFailedException as err:
-        response = GenericAPIResponseModel(
-            status=HTTPStatus.INTERNAL_SERVER_ERROR,
-            message=err.message,
-            error=err.message,
-        )
-
-        return build_api_response(response)
-    except Exception as err:
-        logger.error(err.__str__())
-        raise err
+    return build_api_response(response)
 
 @review_router.get("/{review_id}", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def fetch_review(
@@ -114,26 +72,14 @@ def fetch_review(
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    try:
-        review_uuid = uuid.UUID(review_id)
-        response: GenericAPIResponseModel = ReviewService.fetch_review(
-            review_id=review_uuid, 
-            session=session,
-            user=user,
-        )
-        
-        return build_api_response(response)
-    except CompanyReviewNotFoundException as err:
-        response = GenericAPIResponseModel(
-            status=HTTPStatus.NOT_FOUND,
-            message=err.message,
-            error=err.message,
-        )
-
-        return build_api_response(response)
-    except Exception as err:
-        logger.error(err.__str__())
-        raise err
+    review_uuid = uuid.UUID(review_id)
+    response: GenericAPIResponseModel = ReviewService.fetch_review(
+        review_id=review_uuid, 
+        session=session,
+        user=user,
+    )
+    
+    return build_api_response(response)
 
 @review_router.post("/comment", status_code=HTTPStatus.CREATED, response_model=GenericAPIResponseModel)
 def create_comment(
@@ -141,25 +87,13 @@ def create_comment(
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ): 
-    try:
-        response: GenericAPIResponseModel = CommentService.create_comment(
-            payload=payload,
-            session=session,
-            user=user,
-        )
+    response: GenericAPIResponseModel = CommentService.create_comment(
+        payload=payload,
+        session=session,
+        user=user,
+    )
 
-        return build_api_response(response)
-    except CreateReviewCommentFailedException as err:
-        response = GenericAPIResponseModel(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content=err.__str__(),
-            error=err.__str__(),
-        )
-
-        return build_api_response(response)
-    except Exception as err:
-        logger.error(err.__str__())
-        raise err
+    return build_api_response(response)
 
 @review_router.post("/comment/like", status_code=HTTPStatus.CREATED, response_model=GenericAPIResponseModel)
 def like_comment(
@@ -167,46 +101,45 @@ def like_comment(
     session: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    try:
-        # Create new Like objact in DB
-        response: GenericAPIResponseModel = LikesService.create_comment_like(
-            payload=payload,
-            session=session,
-            user=user,
-        )
+    # Create new Like objact in DB
+    response: GenericAPIResponseModel = LikesService.create_comment_like(
+        payload=payload,
+        session=session,
+        user=user,
+    )
 
-        # Increment Review Comment's likes_count value
-        CommentService.update_comment_like(
-            review_comment_id=payload.review_comment_id,
-            session=session,
-            action=CommentLikeActions.INCREMENT,
-        )
+    # Increment Review Comment's likes_count value
+    CommentService.update_comment_like(
+        review_comment_id=payload.review_comment_id,
+        session=session,
+        action=CommentLikeActions.INCREMENT,
+    )
 
-        return build_api_response(response)
-    except CreateCommentLikeFailedException as err:
-        response = GenericAPIResponseModel(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content=err.__str__(),
-            error=err.__str__(),
-        )
+    return build_api_response(response)
 
-        return build_api_response(response)
-    except Exception as err:
-        logger.error(err.__str__())
-        raise err
+
+@review_router.post("/comment/unlike", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
+def unlike_comment(
+    payload: CreateCommentLikeSchema = Body(),
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    response: GenericAPIResponseModel = LikesService.delete_comment_like(
+        payload=payload,
+        session=session,
+        user=user,
+    )
+
+    return build_api_response(response)
 
 @review_router.post("/offer", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def upload_offer_letter(
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
 ):
-    try:
-        response: GenericAPIResponseModel = UploadService().upload_file(
-            file=file, 
-            user_id=user.id,
-        )
+    response: GenericAPIResponseModel = UploadService().upload_file(
+        file=file, 
+        user_id=user.id,
+    )
 
-        return build_api_response(response)
-    except Exception as err:
-        logger.error(err.__str__())
-        raise err
+    return build_api_response(response)
