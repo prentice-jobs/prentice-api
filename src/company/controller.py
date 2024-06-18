@@ -15,7 +15,7 @@ from src.company.schema import CompanyCreate, CompanyName, CompanyUpdate
 from src.company.service import CompanyService
 from src.core.schema import GenericAPIResponseModel
 from src.company import service, schema
-from src.review.services.upload_service import UploadService
+from src.review.services.gcs_service import CloudStorageService
 from src.utils.db import get_db
 
 VERSION = "v1"

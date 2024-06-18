@@ -8,7 +8,7 @@ from src.company.models import Companies
 from src.company.schema import CompanyUpdate
 from src.core.schema import GenericAPIResponseModel
 from src.salary.services.get_all_reviews_service import ReviewService
-from src.review.services.upload_service import UploadService
+from src.review.services.gcs_service import CloudStorageService
 
 
 class CompanyService:
@@ -23,7 +23,7 @@ class CompanyService:
         return reviews
 
     def _get_company_keywords(self, db: Session, input_strings: List[str], company_name: str):
-        service = UploadService()
+        service = CloudStorageService()
         keywords = service.keyword_extractor(input_strings=input_strings, company_name=company_name)
         return keywords
 

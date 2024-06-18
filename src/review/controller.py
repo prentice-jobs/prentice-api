@@ -21,7 +21,7 @@ from src.utils.db import get_db
 from src.utils.response_builder import build_api_response
 
 from src.review.services.review_service import ReviewService
-from src.review.services.upload_service import UploadService
+from src.review.services.gcs_service import CloudStorageService
 from src.review.services.comment_service import CommentService
 from src.review.services.likes_service import LikesService
 
@@ -137,7 +137,7 @@ def upload_offer_letter(
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
 ):
-    response: GenericAPIResponseModel = UploadService().upload_file(
+    response: GenericAPIResponseModel = CloudStorageService().upload_file(
         file=file, 
         user_id=user.id,
     )
