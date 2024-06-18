@@ -1,11 +1,10 @@
+import uuid
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Enum, Column, String
+from sqlalchemy import Column, String, Enum
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
-import uuid
 
 Base = declarative_base()
-
 
 class Salaries(Base):
     __tablename__ = "salaries"
@@ -15,15 +14,21 @@ class Salaries(Base):
     )
     roles_compare_salary = Column(
         ARRAY(
-            Enum("Software Engineer", "Data Engineer", "Data Analyst", name="role_enum")
+            Enum(
+                "Software Engineer Intern",
+                "Data Engineer",
+                "Data Analyst",
+                "Web Developer",
+                name="role_enum",
+            )
         ),
         nullable=False,
     )
     companies_compare_salary = Column(
-        ARRAY(Enum("Gojek", "Grab", "Tokopedia", "Traveloka", name="company_enum")),
+        ARRAY(Enum("Gojek", "Grab", "Tokopedia", "Traveloka", "maxim", name="company_enum")),
         nullable=False,
     )
     locations_compare_salary = Column(
-        ARRAY(Enum("Jakarta", "Bandung", "Bogor", "Tangerang", name="location_enum")),
+        ARRAY(Enum("Jakarta", "Bandung", "Bogor", "Tangerang", "Balikpapan", name="location_enum")),
         nullable=False,
     )

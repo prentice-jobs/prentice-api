@@ -2,11 +2,11 @@ from pydantic import BaseModel, UUID4
 from enum import Enum
 from typing import List
 
-
 class RoleCompareSalaryEnum(str, Enum):
-    software_engineer = "Software Engineer"
+    software_engineer = "Software Engineer Intern"
     data_engineer = "Data Engineer"
     data_analyst = "Data Analyst"
+    web_developer = "Web Developer"
 
 
 class CompanyCompareSalaryEnum(str, Enum):
@@ -14,6 +14,7 @@ class CompanyCompareSalaryEnum(str, Enum):
     grab = "Grab"
     tokopedia = "Tokopedia"
     traveloka = "Traveloka"
+    maxim = "maxim"
 
 
 class LocationSalaryEnum(str, Enum):
@@ -21,6 +22,7 @@ class LocationSalaryEnum(str, Enum):
     bandung = "Bandung"
     bogor = "Bogor"
     tangerang = "Tangerang"
+    balikpapan = "Balikpapan"
 
 
 class SalaryBase(BaseModel):
@@ -30,7 +32,7 @@ class SalaryBase(BaseModel):
 
 
 class SalaryCreate(SalaryBase):
-    id: UUID4
+    pass
 
 
 class Salary(SalaryBase):
