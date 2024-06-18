@@ -1,10 +1,6 @@
 import uuid
 from http import HTTPStatus
 
-from fastapi import (
-    Depends
-)
-
 from pydantic import (
     EmailStr,
     UUID4

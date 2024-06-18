@@ -74,7 +74,7 @@ class CloudStorageService:
         
     def fetch_recsys_vectorizer(self):
         blob_name = "vectorizer.pkl"
-
+    
         # Check vectorizer object in cache to reduce remote calls
         if self.vectorizer is not None:
             return self.vectorizer
