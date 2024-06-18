@@ -69,4 +69,7 @@ jobs:
             --image ${{ env.GCP_REGISTRY_URL }}:latest \
             --platform managed \
             --region ${{ secrets.GCP_PROJECT_REGION }}
-            --allow-unauthenticated
+
+          gcloud run services add-iam-policy-binding ${{ secrets.GCP_CLOUDRUN_SERVICE }} \
+            --member="allUsers" \
+            --role="roles/run.invoker"
