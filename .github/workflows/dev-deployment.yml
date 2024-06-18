@@ -72,5 +72,5 @@ jobs:
 
           gcloud run services add-iam-policy-binding ${{ secrets.GCP_CLOUDRUN_SERVICE }} \
             --member="allUsers" \
-            --role="roles/run.invoker"
+            --role="roles/run.invoker" \
             --region ${{ secrets.GCP_PROJECT_REGION }}
