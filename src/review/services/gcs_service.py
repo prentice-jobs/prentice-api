@@ -1,3 +1,5 @@
+import pickle
+
 from pydantic import UUID4
 from fastapi import UploadFile
 from http import HTTPStatus
@@ -13,13 +15,16 @@ from src.review.constants import messages as ReviewMessages
 from src.utils.settings import (
     GCS_BUCKET_OFFER_LETTER,
     GCS_BUCKET_STOPWORDS,
+    GCS_BUCKET_RECSYS,
 )
 
-class UploadService:
+class CloudStorageService:
     def __init__(self) -> None:
         self.client = storage.Client()
         self.offer_letter_bucket = GCS_BUCKET_OFFER_LETTER
         self.stopwords_bucket = GCS_BUCKET_STOPWORDS
+        self.recsys_bucket = GCS_BUCKET_RECSYS
+        self.vectorizer = None
         
     def upload_file(self, file: UploadFile, user_id: UUID4) -> GenericAPIResponseModel:
         try:
@@ -66,6 +71,27 @@ class UploadService:
         except Exception as err:
             logger.error(f"Error while fetching stopwords array: {err}")
             return []
+        
+    def fetch_recsys_vectorizer(self):
+        blob_name = "vectorizer.pkl"
+
+        # Check vectorizer object in cache to reduce remote calls
+        if self.vectorizer is not None:
+            return self.vectorizer
+
+        try:
+            bucket = self.client.get_bucket(self.recsys_bucket)
+            blob = bucket.blob(blob_name)
+
+            # Caches vectorizer in-memory
+            vectorizer_data = blob.download_as_bytes()
+            self.vectorizer = pickle.loads(vectorizer_data)
+
+            return self.vectorizer
+        except Exception as err:
+            logger.error(f"Unknown error while loading RecSys vectorizer: {err.__str__()}")
+            
+            return None
     
     def keyword_extractor(self, input_strings: List[str], company_name: str) -> List[str]:
         try:
