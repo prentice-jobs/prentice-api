@@ -31,3 +31,4 @@ class Companies(Base):
     tags = Column(ARRAY(String), nullable=True)
     review_count = Column(Integer, nullable=False, default=0)
     company_review = Column(ARRAY(UUID(as_uuid=True)), nullable=True)
+
