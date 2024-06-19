@@ -41,7 +41,7 @@ def fetch_all_companies(db: Session = Depends(get_db), user: User = Depends(get_
     response_description="Search companies by name",
     status_code=http.HTTPStatus.OK,
 )
-def search_company_by_name(name: str = Query(..., description="Name of the company to search for"), db: Session = Depends(get_db)):
+def search_company_by_name(name: str = Query(..., description="Name of the company to search for"), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     service = CompanyService()
     companies = service.search_companies_by_name(db, name=name)
     return companies
@@ -54,7 +54,8 @@ def search_company_by_name(name: str = Query(..., description="Name of the compa
 def search_company(
     name: str = Query(None, description="Name of the company to search for"),
     tags: str = Query(None, description="Comma-separated tags to filter companies"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
 ):
     service = CompanyService()
     companies = service.search_companies_by_tags(db, name=name, tags=tags)
@@ -65,7 +66,7 @@ def search_company(
     response_description="Fetch a specific company",
     status_code=http.HTTPStatus.OK,
 )
-def fetch_company_by_id(company_id: UUID, db: Session = Depends(get_db)):
+def fetch_company_by_id(company_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     service = CompanyService()
     db_company = service.get_company_by_id(db=db, company_id=company_id)
     if db_company is None:
@@ -74,7 +75,7 @@ def fetch_company_by_id(company_id: UUID, db: Session = Depends(get_db)):
 
 
 @company_router.post("/", status_code=http.HTTPStatus.CREATED)
-def create_company(db: Session = Depends(get_db), payload: CompanyCreate = Body()):
+def create_company(db: Session = Depends(get_db), payload: CompanyCreate = Body(), user: User = Depends(get_current_user)):
     service = CompanyService()
 
     req_company = CompanyCreate(
@@ -103,7 +104,7 @@ def create_company(db: Session = Depends(get_db), payload: CompanyCreate = Body(
     status_code=http.HTTPStatus.OK,
 )
 def update_company(
-    company_id: str, company: CompanyUpdate, db: Session = Depends(get_db)
+    company_id: str, company: CompanyUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
     service = CompanyService()
 
@@ -117,7 +118,7 @@ def update_company(
     "/{company_id}",
     status_code=http.HTTPStatus.OK,
 )
-def delete_company_by_id(company_id: UUID, db: Session = Depends(get_db)):
+def delete_company_by_id(company_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     service = CompanyService()
     db_company = service.delete_company(db, company_id=company_id)
     if db_company is None:
