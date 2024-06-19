@@ -44,7 +44,6 @@ class UserPreferences(PrenticeBaseModel):
     role = Column(String(255))
     industry = Column(String(255))
     location = Column(String(255))
-    is_active = Column(Boolean)
 
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     user = relationship(

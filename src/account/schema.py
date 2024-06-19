@@ -1,9 +1,11 @@
 from datetime import datetime
 from typing import Optional
+from typing_extensions import Annotated
 from pydantic import (
     UUID4,
     BaseModel,
-    EmailStr
+    EmailStr,
+    Field,
 )
 
 from src.core.schema import (
@@ -19,6 +21,16 @@ class RegisterSchema(BaseModel):
     display_name: Optional[str]
     photo_url: Optional[str]
     email_verified: bool
+
+class UserPreferencesSchema(BaseModel):
+    # https://stackoverflow.com/questions/61326020/how-can-i-set-max-string-field-length-constraint-in-pydantic
+    # Setting max length to avoid DB insertion errors
+    role: str = Field(..., max_length=255) 
+    industry: str = Field(..., max_length=255)
+    location: str = Field(..., max_length=255)
+
+class UserPreferencesResponseSchema(UserPreferencesSchema, PrenticeBaseSchema):
+    user_id: UUID4
 
 class RegisterResponseSchema(BaseModel):
     email: EmailStr
