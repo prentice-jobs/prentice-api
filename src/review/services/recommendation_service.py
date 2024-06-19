@@ -171,7 +171,7 @@ class RecommendationService:
     def _compute_similarity_for_new_user(cls, user_id, preferred_role, preferred_industry, preferred_location, list_of_reviews, vectorizer):
         ''' Function to compute similarity score for new user to all of the existing reviews '''
         '''
-        type Review = {'review_id': 193585,
+        type Review = {'id': 193585,
                         'company_id': 37,
                         'author_id': 830,
                         'location': 'Depok',
@@ -190,7 +190,7 @@ class RecommendationService:
         }
 
         type NewUserInput = {
-        user_id: 1,
+        id: 1,
         preferred_role: 'Data Scientist Intern',
         preferred_industry: 'Healthcare',
         preferred_location: 'Jakarta',
@@ -209,15 +209,15 @@ class RecommendationService:
         # Hitung kemiripan antara pengguna baru dengan semua ulasan
         existing_reviews_combined = [f"{d['role']} {d['tags']} {d['location']}" for d in list_of_reviews]
         new_user_sim_scores = cosine_similarity(new_user_tfidf, vectorizer.transform(existing_reviews_combined))
-        sim_scores_with_ids = [{"user_id": user_id, "review_id": review['review_id'], "sim_score": score}
+        sim_scores_with_ids = [{"user_id": user_id, "review_id": review['id'], "sim_score": score}
                             for review, score in zip(list_of_reviews, new_user_sim_scores[0])]
 
-        return sim_scores_with_ids 
+        return sim_scores_with_ids
     
-    def _compute_similarity_for_new_review(review_id, preferred_role, preferred_industry, preferred_location, list_of_users, vectorizer):
+    def _compute_similarity_for_new_review(cls, review_id, preferred_role, preferred_industry, preferred_location, list_of_users, vectorizer):
         ''' Function to compute similarity score for new review to all of the existing users '''
         '''
-        type User = {'user_id': 1,
+        type User = {'id': 1,
                     'preferred_role': 'Data Scientist Intern',
                     'preferred_industry': 'Healthcare',
                     'preferred_location': 'Jakarta'
@@ -230,7 +230,7 @@ class RecommendationService:
         }
 
         type NewReviewInput = {
-        review_id: 1,
+        id: 1,
         preferred_role: 'Data Scientist Intern',
         preferred_industry: 'Healthcare',
         preferred_location: 'Jakarta',
@@ -250,18 +250,18 @@ class RecommendationService:
         # Hitung kemiripan antara semua pengguna dengan ulasan baru
         existing_users_combined = [f"{d['preferred_role']} {d['preferred_industry']} {d['preferred_location']}" for d in list_of_users]
         new_review_sim_scores = cosine_similarity(vectorizer.transform(existing_users_combined), new_review_tfidf).reshape(1, -1)
-        sim_scores_with_ids = [{"user_id": user['user_id'], "review_id": review_id, "sim_score": score}
+        sim_scores_with_ids = [{"user_id": user['id'], "review_id": review_id, "sim_score": score}
                             for user, score in zip(list_of_users, new_review_sim_scores[0])]
 
         return sim_scores_with_ids
     
 
     @classmethod
-    def _recommend_reviews(preferred_role, preferred_industry, preferred_location, reviews, sim_scores_user, top_n=5, random_factor=0.4, location_weight=2.0):
+    def _recommend_reviews(cls, preferred_role, preferred_industry, preferred_location, reviews, sim_scores_user, top_n=5, random_factor=0.4, location_weight=2.0):
         '''Function to get top_n recommended reviews'''
 
         '''
-        type Review = {'review_id': 193585,
+        type Review = {'id': 193585,
                         'company_id': 37,
                         'author_id': 830,
                         'location': 'Depok',
@@ -326,48 +326,45 @@ class RecommendationService:
             [0.7, 0.6, 0.5, 0.8, 0.6, 0.5, 0.7, 1.0], # DA Intern
         ])
 
-        # Adjust for location weight
         adjusted_scores = sim_scores_user.copy()
-        review_locations = [review['location'] for review in reviews]
+        review_dict = {review['id']: review for review in reviews}
 
         for score in adjusted_scores:
-            if review_locations[score['review_id'] - 1] == preferred_location:
+            if review_dict[score['review_id']]['location'] == preferred_location:
                 score['sim_score'] *= location_weight
 
         # Adjust for role similarity
-        review_roles = [review['role'] for review in reviews]
-
         for score in adjusted_scores:
-            review_role = review_roles[score['review_id'] - 1]
+            review_role = review_dict[score['review_id']]['role']
             score['sim_score'] *= role_similarity_matrix[roles.index(preferred_role), roles.index(review_role)]
 
         # Sort the adjusted scores based on sim_score
         sorted_scores = sorted(adjusted_scores, key=lambda x: x['sim_score'], reverse=True)
 
         # Get top review indices based on sorted scores
-        top_review_indices = [score['review_id'] - 1 for score in sorted_scores]
+        top_review_ids = [score['review_id'] for score in sorted_scores]
 
         # Determine number of top and random reviews to select
         num_random_reviews = int(top_n * random_factor)
         num_top_reviews = top_n - num_random_reviews
 
         # Select top reviews
-        top_reviews = [reviews[idx] for idx in top_review_indices[:num_top_reviews]]
+        top_reviews = [review_dict[review_id] for review_id in top_review_ids[:num_top_reviews]]
 
         # Select random reviews from the remaining ones
-        remaining_indices = top_review_indices[num_top_reviews:]
-        remaining_reviews = [reviews[idx] for idx in remaining_indices]
+        remaining_ids = top_review_ids[num_top_reviews:]
+        remaining_reviews = [review_dict[review_id] for review_id in remaining_ids]
 
         # Filter random reviews based on nearby locations
-        nearby_indices = []
-        for idx in remaining_indices:
-            review_location = review_locations[idx]
+        nearby_ids = []
+        for review_id in remaining_ids:
+            review_location = review_dict[review_id]['location']
             if review_location in nearby_location_ids.get(preferred_location, []):
-                nearby_indices.append(idx)
+                nearby_ids.append(review_id)
 
         # Randomly select from nearby reviews
-        if nearby_indices:
-            nearby_random_reviews = [reviews[idx] for idx in np.random.choice(nearby_indices, min(num_random_reviews, len(nearby_indices)), replace=False)]
+        if nearby_ids:
+            nearby_random_reviews = [review_dict[review_id] for review_id in np.random.choice(nearby_ids, min(num_random_reviews, len(nearby_ids)), replace=False)]
         else:
             nearby_random_reviews = []
 
@@ -377,7 +374,7 @@ class RecommendationService:
         # If the combined reviews are less than top_n, add more from the remaining pool
         if len(combined_reviews) < top_n:
             additional_reviews_needed = top_n - len(combined_reviews)
-            additional_reviews = [reviews[idx] for idx in remaining_indices[:additional_reviews_needed]]
+            additional_reviews = [review_dict[review_id] for review_id in remaining_ids[:additional_reviews_needed]]
             combined_reviews.extend(additional_reviews)
 
         # Shuffle the combined recommendations
