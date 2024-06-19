@@ -65,3 +65,16 @@ class ReviewCommentLike(PrenticeBaseModel):
     review_comment_id = Column(UUID())
     liker_id = Column(UUID())
 
+class UserReviewSimilarityScores(PrenticeBaseModel):
+    __tablename__ = "user_review_similarity_scores"
+
+    user_id = Column(UUID())
+    review_id = Column(UUID())
+    sim_score = Column(Float(precision=3))
+
+class UserReviewRecommendationsCache(PrenticeBaseModel):
+    __tablename__ = "user_review_recommendations_cache"
+
+    user_id = Column(UUID())
+    review_id = Column(UUID())
+    sim_score = Column(Float(precision=3))

@@ -6,6 +6,11 @@ import pickle
 from sklearn.metrics.pairwise import cosine_similarity
 
 import uuid
+from typing import (
+    List,
+    Dict,
+    Any,
+)
 from http import HTTPStatus
 
 from fastapi import (
@@ -36,20 +41,18 @@ from src.review.services.gcs_service import CloudStorageService
 from src.core.schema import GenericAPIResponseModel
 from src.utils.time import get_datetime_now_jkt
 
-from src.review.schema import (
-    # Simple
-    CreateCompanyReviewSchema,
-    CompanyReviewModelSchema,
-    CreateCompanyReviewResponseSchema,
-)
 from src.review.model import (
     CompanyReview,
     ReviewComment,
+    UserReviewSimilarityScores,
+    UserReviewRecommendationsCache
 )
 
+from src.review.schema import (
+    CreateUserReviewSimScoresSchema,
+)
 from src.review.exceptions import (
-    CreateCompanyReviewFailedException,
-    CompanyReviewNotFoundException,
+    CreateSimScoresFailedException,
 )
 from src.review.constants import messages as ReviewMessages
 
@@ -70,7 +73,10 @@ class RecommendationService:
         preferred_location: str,
         user: User,
         session: Session,
-    ):
+    ) -> List[Dict[str, Any]]:
+        """
+        Driver method for ML algorithm `_compute_similarity_for_new_user()`
+        """
         # Load vectorizer object
         vectorizer = CloudStorageService().fetch_recsys_vectorizer()
 
@@ -104,6 +110,10 @@ class RecommendationService:
             vectorizer=vectorizer,
         )
 
+        # Save many-to-many SimScore object to DB
+        # user_id is the same, with different review_ids (1 for each review in app)
+        
+
         return new_user_sim_scores
 
     @classmethod
@@ -115,7 +125,10 @@ class RecommendationService:
         user: User,
         review: CompanyReview,
         session: Session,
-    ):
+    ) -> List[Dict[str, Any]]:
+        """
+        Driver method for ML algorithm "_compute_similarity_for_new_review()"
+        """
         # Load vectorizer object
         vectorizer = CloudStorageService().fetch_recsys_vectorizer()
 
@@ -149,10 +162,102 @@ class RecommendationService:
             vectorizer=vectorizer,
         )
 
+        # Save many-to-many SimScore object to DB
+        # review_id is the same, with different user_ids (1 for each user in app)
+
         return new_review_sim_scores
-    
+
     @classmethod
-    def recommend_reviews(preferred_role, preferred_industry, preferred_location, reviews, sim_scores_user, top_n=5, random_factor=0.4, location_weight=2.0):
+    def _compute_similarity_for_new_user(cls, user_id, preferred_role, preferred_industry, preferred_location, list_of_reviews, vectorizer):
+        ''' Function to compute similarity score for new user to all of the existing reviews '''
+        '''
+        type Review = {'review_id': 193585,
+                        'company_id': 37,
+                        'author_id': 830,
+                        'location': 'Depok',
+                        'is_remote': True,
+                        'tags': 'Government',
+                        'star_rating': 2,
+                        'title': 'P7KBT1FGUN',
+                        'description': '7U2\t\x0cNLW2P1VE\x0c5DHN\x0c\x0bFGLZP8C6\x0b\r\x0bZBG1ZK3L\x0b5B Z\x0bQOL0V',
+                        'role': 'Quality Assurance Intern'
+                        }
+
+        type SimScore = {
+        'user_id': 2,
+        'review_id': 4,
+        'sim_score': 0.2
+        }
+
+        type NewUserInput = {
+        user_id: 1,
+        preferred_role: 'Data Scientist Intern',
+        preferred_industry: 'Healthcare',
+        preferred_location: 'Jakarta',
+        list_of_reviews: Review[],
+        vectorizer: TfidfVectorizer()
+        }
+
+        compute_similarity_for_new_user(input: NewUserInput) = {
+        output: SimScore[]
+        }
+        '''
+
+        new_user_combined = ' '.join([preferred_role, preferred_industry, preferred_location])
+        new_user_tfidf = vectorizer.transform([new_user_combined])
+
+        # Hitung kemiripan antara pengguna baru dengan semua ulasan
+        existing_reviews_combined = [f"{d['role']} {d['tags']} {d['location']}" for d in list_of_reviews]
+        new_user_sim_scores = cosine_similarity(new_user_tfidf, vectorizer.transform(existing_reviews_combined))
+        sim_scores_with_ids = [{"user_id": user_id, "review_id": review['review_id'], "sim_score": score}
+                            for review, score in zip(list_of_reviews, new_user_sim_scores[0])]
+
+        return sim_scores_with_ids 
+    
+    def _compute_similarity_for_new_review(review_id, preferred_role, preferred_industry, preferred_location, list_of_users, vectorizer):
+        ''' Function to compute similarity score for new review to all of the existing users '''
+        '''
+        type User = {'user_id': 1,
+                    'preferred_role': 'Data Scientist Intern',
+                    'preferred_industry': 'Healthcare',
+                    'preferred_location': 'Jakarta'
+                        }
+
+        type SimScore = {
+        'user_id': 2,
+        'review_id': 4,
+        'sim_score': 0.2
+        }
+
+        type NewReviewInput = {
+        review_id: 1,
+        preferred_role: 'Data Scientist Intern',
+        preferred_industry: 'Healthcare',
+        preferred_location: 'Jakarta',
+        list_of_users: User[],
+        vectorizer: TfidfVectorizer()
+        }
+
+        compute_similarity_for_new_review(input: NewReviewInput) = {
+        output: SimScore[]
+        }
+        '''
+
+        # new_review_details adalah list yang berisi [role_str, tags_str, location_str]
+        new_review_combined = ' '.join([preferred_role, preferred_industry, preferred_location])
+        new_review_tfidf = vectorizer.transform([new_review_combined])
+
+        # Hitung kemiripan antara semua pengguna dengan ulasan baru
+        existing_users_combined = [f"{d['preferred_role']} {d['preferred_industry']} {d['preferred_location']}" for d in list_of_users]
+        new_review_sim_scores = cosine_similarity(vectorizer.transform(existing_users_combined), new_review_tfidf).reshape(1, -1)
+        sim_scores_with_ids = [{"user_id": user['user_id'], "review_id": review_id, "sim_score": score}
+                            for user, score in zip(list_of_users, new_review_sim_scores[0])]
+
+        return sim_scores_with_ids
+    
+
+    @classmethod
+    def _recommend_reviews(preferred_role, preferred_industry, preferred_location, reviews, sim_scores_user, top_n=5, random_factor=0.4, location_weight=2.0):
         '''Function to get top_n recommended reviews'''
 
         '''
@@ -279,93 +384,58 @@ class RecommendationService:
         np.random.shuffle(combined_reviews)
 
         return combined_reviews[:top_n]
-
-    @classmethod
-    def _compute_similarity_for_new_user(cls, user_id, preferred_role, preferred_industry, preferred_location, list_of_reviews, vectorizer):
-        ''' Function to compute similarity score for new user to all of the existing reviews '''
-        '''
-        type Review = {'review_id': 193585,
-                        'company_id': 37,
-                        'author_id': 830,
-                        'location': 'Depok',
-                        'is_remote': True,
-                        'tags': 'Government',
-                        'star_rating': 2,
-                        'title': 'P7KBT1FGUN',
-                        'description': '7U2\t\x0cNLW2P1VE\x0c5DHN\x0c\x0bFGLZP8C6\x0b\r\x0bZBG1ZK3L\x0b5B Z\x0bQOL0V',
-                        'role': 'Quality Assurance Intern'
-                        }
-
-        type SimScore = {
-        'user_id': 2,
-        'review_id': 4,
-        'sim_score': 0.2
-        }
-
-        type NewUserInput = {
-        user_id: 1,
-        preferred_role: 'Data Scientist Intern',
-        preferred_industry: 'Healthcare',
-        preferred_location: 'Jakarta',
-        list_of_reviews: Review[],
-        vectorizer: TfidfVectorizer()
-        }
-
-        compute_similarity_for_new_user(input: NewUserInput) = {
-        output: SimScore[]
-        }
-        '''
-
-        new_user_combined = ' '.join([preferred_role, preferred_industry, preferred_location])
-        new_user_tfidf = vectorizer.transform([new_user_combined])
-
-        # Hitung kemiripan antara pengguna baru dengan semua ulasan
-        existing_reviews_combined = [f"{d['role']} {d['tags']} {d['location']}" for d in list_of_reviews]
-        new_user_sim_scores = cosine_similarity(new_user_tfidf, vectorizer.transform(existing_reviews_combined))
-        sim_scores_with_ids = [{"user_id": user_id, "review_id": review['review_id'], "sim_score": score}
-                            for review, score in zip(list_of_reviews, new_user_sim_scores[0])]
-
-        return sim_scores_with_ids 
     
-    def _compute_similarity_for_new_review(review_id, preferred_role, preferred_industry, preferred_location, list_of_users, vectorizer):
-        ''' Function to compute similarity score for new review to all of the existing users '''
-        '''
-        type User = {'user_id': 1,
-                    'preferred_role': 'Data Scientist Intern',
-                    'preferred_industry': 'Healthcare',
-                    'preferred_location': 'Jakarta'
-                        }
-
-        type SimScore = {
-        'user_id': 2,
-        'review_id': 4,
-        'sim_score': 0.2
-        }
-
-        type NewReviewInput = {
-        review_id: 1,
-        preferred_role: 'Data Scientist Intern',
-        preferred_industry: 'Healthcare',
-        preferred_location: 'Jakarta',
-        list_of_users: User[],
-        vectorizer: TfidfVectorizer()
-        }
-
-        compute_similarity_for_new_review(input: NewReviewInput) = {
-        output: SimScore[]
-        }
-        '''
-
-        # new_review_details adalah list yang berisi [role_str, tags_str, location_str]
-        new_review_combined = ' '.join([preferred_role, preferred_industry, preferred_location])
-        new_review_tfidf = vectorizer.transform([new_review_combined])
-
-        # Hitung kemiripan antara semua pengguna dengan ulasan baru
-        existing_users_combined = [f"{d['preferred_role']} {d['preferred_industry']} {d['preferred_location']}" for d in list_of_users]
-        new_review_sim_scores = cosine_similarity(vectorizer.transform(existing_users_combined), new_review_tfidf).reshape(1, -1)
-        sim_scores_with_ids = [{"user_id": user['user_id'], "review_id": review_id, "sim_score": score}
-                            for user, score in zip(list_of_users, new_review_sim_scores[0])]
-
-        return sim_scores_with_ids
+    @classmethod
+    def _save_sim_scores_to_db():
+        # NOTE - Since our many to many table acts as a similarity matrix that gets updated continuously, we must check whether a many to many relation exists and "replace" (delete-then-insert) them with the updated relations.
+        pass
 
     # Utility methods
+    @classmethod
+    def _create_user_review_sim_scores_model(
+        cls,
+        payload: CreateUserReviewSimScoresSchema,
+        session: Session,
+        user: User,
+    ):
+        sim_scores_schema = cls._create_user_review_sim_scores_schema(
+            payload=payload,
+            session=session,
+            user=user,
+        )
+
+        sim_scores_obj = UserReviewSimilarityScores(**sim_scores_schema.model_dump())
+
+        try:
+            session.add(sim_scores_obj)
+            session.commit()
+            session.refresh(sim_scores_obj)
+
+            return sim_scores_obj
+        except Exception as err:
+            logger.error(err.__str__())
+            
+            session.rollback()
+            raise CreateSimScoresFailedException(err.__str__())
+
+    @classmethod
+    def _create_user_review_sim_scores_schema(
+        cls,
+        payload: CreateUserReviewSimScoresSchema,
+        session: Session,
+        user: User,
+    ):
+        time_now = get_datetime_now_jkt()
+
+        sim_scores_schema = CreateUserReviewSimScoresSchema(
+            id=uuid.uuid4(),
+            created_at=time_now,
+            updated_at=time_now,
+            is_deleted=False,
+
+            user_id=payload.user_id,
+            review_id=payload.review_id,
+            sim_score=payload.sim_score,
+        )
+
+        return sim_scores_schema

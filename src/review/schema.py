@@ -69,3 +69,12 @@ class CreateCommentLikeSchema(BaseModel):
 class CommentLikeModelSchema(CreateCommentLikeSchema, PrenticeBaseSchema):
     liker_id: UUID4
     
+class CreateUserReviewSimScoresSchema(PrenticeBaseSchema):
+    """
+    Pydantic schema for creating `UserReviewSimilarityScores` and `UserReviewRecommendationsCache` objects
+    """
+
+    user_id: UUID4
+    review_id: UUID4
+    sim_score: Annotated[float, Field(ge=0, le=1)]
+

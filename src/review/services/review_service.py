@@ -9,15 +9,22 @@ from pydantic import (
 from fastapi.encoders import jsonable_encoder
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import (
+    NoResultFound,
+    MultipleResultsFound,
+)
 
 from prentice_logger import logger
 
-from src.account.model import User
+from src.account.model import (
+    User, 
+    UserPreferences,
+)
 from src.account.exceptions import UnauthorizedOperationException
 from src.account.constants import messages as AccountMessages
 
 from src.core.schema import GenericAPIResponseModel
-from src.utils.time import get_datetime_now_jkt
+from src.review.services.recommendation_service import RecommendationService
 
 from src.review.schema import (
     # Simple
@@ -115,26 +122,41 @@ class ReviewService:
         user: User,
     ):
         try:
-            company_review = cls._create_company_review_model(
+            company_review_model = cls._create_company_review_model(
                 payload=payload,
                 session=session,
                 user=user,
             )
 
-            data = CreateCompanyReviewResponseSchema(
-                id=company_review.id,
-                created_at=company_review.created_at,
-                author_id=company_review.author_id,
-                company_id=company_review.company_id,
-                title=company_review.title,
+            review_data = CreateCompanyReviewResponseSchema(
+                id=company_review_model.id,
+                created_at=company_review_model.created_at,
+                author_id=company_review_model.author_id,
+                company_id=company_review_model.company_id,
+                title=company_review_model.title,
             )
 
-            data_json = jsonable_encoder(data)
+            # RecSys action for new review
+            user_preferences = session.query(UserPreferences) \
+                                .filter(UserPreferences.user_id == user.id, UserPreferences.is_deleted == False) \
+                                .one()
+
+            # Compute Similarity Score Matrix
+            RecommendationService.compute_similarity_for_new_review(
+                preferred_role=user_preferences.role,
+                preferred_industry=user_preferences.industry,
+                preferred_location=user_preferences.location,
+                user=user,
+                review=company_review_model,
+                session=session,
+            )
+
+            review_data_json = jsonable_encoder(review_data)
 
             response = GenericAPIResponseModel(
                 status=HTTPStatus.CREATED,
                 message=ReviewMessages.COMPANY_REVIEW_CREATE_SUCCESS,
-                data=data_json,
+                data=review_data_json,
             )
 
             return response
@@ -153,6 +175,22 @@ class ReviewService:
                 error=err.__str__(),
             )
             
+            return response
+        except NoResultFound as err:
+            response = GenericAPIResponseModel(
+                status_code=HTTPStatus.NOT_FOUND,
+                content=err.__str__(),
+                error=err.__str__(),
+            )
+
+            return response
+        except MultipleResultsFound as err:
+            response = GenericAPIResponseModel(
+                status_code=HTTPStatus.CONFLICT,
+                content=err.__str__(),
+                error=err.__str__(),
+            )
+
             return response
         except Exception as err:
             logger.error(f"Unknown exception occurred: {err.__str__()}")
@@ -186,7 +224,9 @@ class ReviewService:
             session.refresh(company_review_obj)
 
             return company_review_obj
-        except Exception as err: # To handle db exceptions
+        except Exception as err:
+            logger.error(err.__str__())
+
             session.rollback()
             raise CreateCompanyReviewFailedException(err.__str__())
 
