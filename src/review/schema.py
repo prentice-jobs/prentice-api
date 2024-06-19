@@ -80,3 +80,6 @@ class CreateUserReviewSimScoresSchema(BaseModel):
 
 class UserReviewSimScoresModelSchema(CreateUserReviewSimScoresSchema, PrenticeBaseSchema):
     pass
+
+class ComputeSimNewReviewRequest(BaseModel):
+    review_id: str

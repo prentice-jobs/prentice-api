@@ -60,6 +60,8 @@ from src.review.constants import messages as ReviewMessages
 from src.review.exceptions_recsys import (
     RecsysVectorizerNotFoundException,
     NoReviewsAvailableInPlatformException,
+    NoUsersAvailableInPlatformException,
+    BadRequestException,
 )
 
 from src.review.schema_recsys import (
@@ -84,7 +86,7 @@ class RecommendationService:
         cls,
         user: User,
         session: Session,
-    ) -> List[Dict[str, Any]]:
+    ):
         """
         Driver method for ML algorithm `_compute_similarity_for_new_user()`
         """
@@ -108,11 +110,11 @@ class RecommendationService:
         
         # Create query to fetch Review data using SQLAlchemy
         review_query = session.query(
-            CompanyReview.id, 
-            CompanyReview.role, 
-            CompanyReview.tags, 
-            CompanyReview.location,
-        )
+                CompanyReview.id, 
+                CompanyReview.role, 
+                CompanyReview.tags, 
+                CompanyReview.location,
+            )
 
         if review_query.count() == 0:
             logger.error("Error: NoReviewsAvailableInPlatformException")
@@ -138,7 +140,7 @@ class RecommendationService:
             reviews_df.to_dict(orient='records')
 
         # Compute similarity for new user
-        sim_scores_dict_list = ComputeSimNewUser_NewUserInput(
+        ml_algo_payload = ComputeSimNewUser_NewUserInput(
             id=user.id, # New user's id
             preferred_role=new_user_preferences.role,
             preferred_industry=new_user_preferences.industry,
@@ -148,11 +150,11 @@ class RecommendationService:
         )
 
         new_user_sim_scores = cls.__compute_similarity_for_new_user(
-            payload=sim_scores_dict_list,
+            payload=ml_algo_payload,
         )
 
         created_count = cls.__save_sim_scores_to_db(
-            new_user_sim_scores=new_user_sim_scores,
+            new_sim_scores_list=new_user_sim_scores,
             session=session,
             user=user,
         )
@@ -167,13 +169,9 @@ class RecommendationService:
     @classmethod
     def compute_similarity_for_new_review(
         cls, 
-        preferred_role: str,
-        preferred_industry: str,
-        preferred_location: str,
-        user: User,
-        review: CompanyReview,
+        target_review_id: UUID4,
         session: Session,
-    ) -> List[Dict[str, Any]]:
+    ):
         """
         Driver method for ML algorithm "_compute_similarity_for_new_review()"
         """
@@ -182,39 +180,81 @@ class RecommendationService:
 
         if vectorizer is None:
             raise RecsysVectorizerNotFoundException()
-        
 
-        # Create query to fetch 4 columns of Users table using SQLAlchemy
-        query = session.query(
+        # all_users_preferences_list = session.query(
+        #         UserPreferences
+        #     ) \
+        #     .filter(
+        #         UserPreferences.is_deleted == False,
+        #     ) \
+        #     .all()
+        
+        # Create query to fetch Review data using SQLAlchemy
+        users_query = session.query(
                 UserPreferences.user_id,
                 UserPreferences.role,
                 UserPreferences.industry,
                 UserPreferences.location,
-            ) 
+            )
+
+        if users_query.count() == 0:
+            logger.error("Error: NoUsersAvailableInPlatformException")
+
+            raise NoUsersAvailableInPlatformException()
 
         # Parse SQL to pandas df
         users_pref_df = pd.read_sql(
-            sql=query.statement,
-            con=sqlalchemy_engine,
-        )
+                sql=users_query.statement,
+                con=sqlalchemy_engine,
+            ) \
+            .rename(
+                columns={
+                    # Rename according to ML algo spec
+                    'role': 'preferred_role',
+                    'industry': 'preferred_industry',
+                    'location': 'preferred_location'
+                }
+            )
             
-        list_of_users = users_pref_df.to_dict(orient='records')
+        list_of_users: List[ComputeSimNewReview_User] = \
+            users_pref_df.to_dict(orient='records')
 
         # Compute similarity for new user
-        # TODO user_id field is now `id` only - change var names
-        new_review_sim_scores = cls.__compute_similarity_for_new_review(
-            review_id=review.id,
-            review_role=preferred_role,
-            review_industry=preferred_industry,
-            review_location=preferred_location,
+        review = session.query(CompanyReview) \
+            .filter(
+                CompanyReview.id == target_review_id, 
+                CompanyReview.is_deleted == False
+            ) \
+            .first()
+        
+        if review is None:
+            raise BadRequestException()
+        
+        ml_algo_payload = ComputeSimNewReview_NewReviewInput(
+            id=review.id,
+            review_role=review.role,
+            review_industry=review.tags, # NOTE `tags` -> maps to `industry`
+            review_location=review.location,
             list_of_users=list_of_users,
             vectorizer=vectorizer,
         )
 
-        # Save many-to-many SimScore object to DB
-        # review_id is the same, with different user_ids (1 for each user in app)
+        new_review_sim_scores = cls.__compute_similarity_for_new_review(
+            payload=ml_algo_payload,
+        )
 
-        return new_review_sim_scores
+        created_count = cls.__save_sim_scores_to_db(
+            new_sim_scores_list=new_review_sim_scores,
+            session=session,
+            review=review,
+        )
+
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.CREATED,
+            message=f"Created {created_count} SimScore objects in db",
+        )
+
+        return response
 
     @classmethod
     def __compute_similarity_for_new_user(
@@ -336,7 +376,7 @@ class RecommendationService:
         sim_scores_with_ids: List[UniversalSimScoreSchema] = \
             [
                 UniversalSimScoreSchema(
-                    user_id=user_item.id,
+                    user_id=user_item.user_id, # Uses user-id and NOT id!
                     review_id=review_id,
                     sim_score=score,
                 ) \
@@ -492,9 +532,10 @@ class RecommendationService:
     @classmethod
     def __save_sim_scores_to_db(
         cls,
-        new_user_sim_scores: List[UniversalSimScoreSchema],
+        new_sim_scores_list: List[UniversalSimScoreSchema],
         session: Session,
-        user: User,
+        user: User = None,
+        review: CompanyReview = None,
     ):
         # NOTE - Since our many to many table acts as a similarity matrix
         #  that gets updated continuously, we must check whether a many to many
@@ -504,20 +545,34 @@ class RecommendationService:
         # Save a list of many-to-many SimScore object to DB
         # user_id is the same, with different review_ids (1 for each review in app)
 
+        # If both `user` and `review` params aren't given, raise exception
+        if not user and not review:
+            raise CreateSimScoresFailedException("Failed to create SimScore objects. Both `user` and `review` params are not given.")
+        
+        # If both exists, then it's also an error
+        if user and review:
+            raise CreateSimScoresFailedException("Failed to create SimScore objects. Overloaded arguments where only 1 of them should exist.")
+
         # Check if user already has SimScore pair in DB. 
         # If yes, purge all the objects. Else, continue
         
-        is_sim_score_exists_and_purged = cls.__check_sim_score_exists_and_purge(
-            session=session,
-            user=user,
-        )
+        if user:
+            is_sim_score_exists_and_purged = cls.__check_sim_score_exists_and_purge(
+                session=session,
+                user=user,
+            )
+        elif review:
+            is_sim_score_exists_and_purged = cls.__check_sim_score_exists_and_purge(
+                session=session,
+                review=review,
+            )
 
         logger.debug("Is sim score exists and is purged? {is_sim_score_exists_and_purged}")
         
         # Compute the new SimScore pair
         sim_scores_dict_list: List[CreateUserReviewSimScoresSchema] = []
 
-        for score_dict in new_user_sim_scores:
+        for score_dict in new_sim_scores_list:
             item = CreateUserReviewSimScoresSchema(
                 user_id=score_dict.user_id,
                 review_id=score_dict.review_id,
@@ -613,21 +668,34 @@ class RecommendationService:
     def __check_sim_score_exists_and_purge(
         cls,
         session: Session,
-        user: User,
-    ):
+        user: User = None,
+        review: CompanyReview = None,
+    ):  
         # Check if user already has SimScore pair in DB. 
         # If yes, purge all the objects. Else, continue
-        existing_sim_scores = session.query(UserReviewSimilarityScores) \
-            .filter(
-                UserReviewSimilarityScores.user_id == user.id,
-                UserReviewSimilarityScores.is_deleted == False,
-            )
+        if (user and review) or (not user and not review):
+            raise CreateSimScoresFailedException()
         
+        existing_sim_scores = None
+
+        if user:
+            existing_sim_scores = session.query(UserReviewSimilarityScores) \
+                .filter(
+                    UserReviewSimilarityScores.user_id == user.id,
+                    UserReviewSimilarityScores.is_deleted == False,
+                )
+        elif review:
+            existing_sim_scores = session.query(UserReviewSimilarityScores) \
+                .filter(
+                    UserReviewSimilarityScores.review_id == review.id,
+                    UserReviewSimilarityScores.is_deleted == False,
+                )
+            
         if existing_sim_scores.count() > 0:
             # Purge previous SimScores
             existing_sim_scores.delete()
             session.commit()
 
             return True
-        
-        return False
+        else:
+            return False

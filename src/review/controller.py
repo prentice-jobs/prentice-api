@@ -2,6 +2,8 @@ import uuid
 from http import HTTPStatus
 from sqlalchemy.orm import Session
 
+from pydantic import UUID4
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -30,6 +32,7 @@ from src.review.schema import (
     CreateCompanyReviewSchema,
     CreateCommentSchema,
     CreateCommentLikeSchema,
+    ComputeSimNewReviewRequest,
 )
 
 from src.review.utils import CommentLikeActions
@@ -57,6 +60,29 @@ def compute_sim_new_user(
             session=session,
         )
 
+        return build_api_response(response)
+    except Exception as err:
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=err.__str__(),
+            error=err.__str__()
+        )
+
+        return build_api_response(response)
+
+@review_router.post("/recsys/new-review", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
+def compute_sim_new_review(
+    payload: ComputeSimNewReviewRequest = Body(),
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user), # Authorization purposes
+):
+    try:
+        review_id = uuid.UUID(payload.review_id)
+        response = RecommendationService.compute_similarity_for_new_review(
+            target_review_id=review_id,
+            session=session,
+        )
+        
         return build_api_response(response)
     except Exception as err:
         response = GenericAPIResponseModel(

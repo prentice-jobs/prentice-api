@@ -19,3 +19,7 @@ class NoUsersAvailableInPlatformException(Exception):
         super().__init__(message)
         self.message = message
 
+class BadRequestException(Exception):
+    def __init__(self, message="Bad request causing system to fail. Recheck your input."):
+        super().__init__(message)
+        self.message = message

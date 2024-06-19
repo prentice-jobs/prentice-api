@@ -38,7 +38,7 @@ class ComputeSimNewUser_NewUserInput(BaseModel):
 
 # 2 - Compute Similarity for New Review
 class ComputeSimNewReview_User(BaseModel):
-    id: UUID4
+    user_id: UUID4
     preferred_role: str
     preferred_industry: str
     preferred_location: str
