@@ -111,7 +111,7 @@ class RecommendationService:
             CompanyReview.location,
         )
 
-        if review_query.count == 0:
+        if review_query.count() == 0:
             logger.error("Error: NoReviewsAvailableInPlatformException")
 
             raise NoReviewsAvailableInPlatformException()

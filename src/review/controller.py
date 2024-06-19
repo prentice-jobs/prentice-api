@@ -24,6 +24,7 @@ from src.review.services.review_service import ReviewService
 from src.review.services.gcs_service import CloudStorageService
 from src.review.services.comment_service import CommentService
 from src.review.services.likes_service import LikesService
+from src.review.services.recommendation_service import RecommendationService
 
 from src.review.schema import (
     CreateCompanyReviewSchema,
@@ -43,6 +44,28 @@ review_router = APIRouter(
     prefix=f"/{VERSION}/{ENDPOINT}",
     tags=[ENDPOINT]
 )
+
+
+@review_router.post("/recsys/new-user", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
+def compute_sim_new_user(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    try:
+        response = RecommendationService.compute_similarity_for_new_user(
+            user=user,
+            session=session,
+        )
+
+        return build_api_response(response)
+    except Exception as err:
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=err.__str__(),
+            error=err.__str__()
+        )
+
+        return build_api_response(response)
 
 @review_router.get("/feed", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def fetch_user_feed(
