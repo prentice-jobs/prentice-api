@@ -51,12 +51,15 @@ from src.review.model import (
 from src.review.schema import (
     CreateUserReviewSimScoresSchema,
 )
-from src.review.exceptions import (
+from src.review.exceptions_recsys import (
     CreateSimScoresFailedException,
 )
 from src.review.constants import messages as ReviewMessages
 
-from src.review.exceptions import RecsysVectorizerNotFoundException
+from src.review.exceptions_recsys import (
+    RecsysVectorizerNotFoundException,
+    NoReviewsAvailableInPlatformException,
+)
 
 from src.review.schema_recsys import (
     ComputeSimNewUser_Review,
@@ -82,7 +85,6 @@ class RecommendationService:
         """
         Driver method for ML algorithm `_compute_similarity_for_new_user()`
         """
-
         # TODO handle edge cases (non happy path)
 
         # Load vectorizer object
@@ -109,6 +111,11 @@ class RecommendationService:
             CompanyReview.location,
         )
 
+        if review_query.count == 0:
+            logger.error("Error: NoReviewsAvailableInPlatformException")
+
+            raise NoReviewsAvailableInPlatformException()
+
         # Fetch Reviews table and parse to df
         reviews_df = pd.read_sql(
                 sql=review_query.statement,
@@ -122,7 +129,7 @@ class RecommendationService:
                     'location': 'preferred_location'
                 }
             )
-
+        
         list_of_reviews: List[ComputeSimNewUser_Review] = \
             reviews_df.to_dict(orient='records')
 
