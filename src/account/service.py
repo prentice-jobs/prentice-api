@@ -5,6 +5,7 @@ from pydantic import (
     EmailStr
 )
 
+from prentice_logger import logger
 from fastapi.encoders import jsonable_encoder
 
 from sqlalchemy.orm import Session
@@ -12,15 +13,23 @@ from sqlalchemy.orm import Session
 from src.core.schema import GenericAPIResponseModel
 from src.utils.time import get_datetime_now_jkt
 
-from src.account.model import User
+from src.account.model import (
+    User,
+    UserPreferences,
+)
+
 from src.account.schema import (
     RegisterSchema,
     UserModelSchema,
     RegisterResponseSchema,
+    UserPreferencesSchema,
+    UserPreferencesResponseSchema,
 )
 from src.account.exceptions import (
     UserAlreadyExistsException,
     RegistrationFailedException,
+    SavePreferencesFailedException,
+    UserPreferencesAlreadyExistsException,
 )
 from src.account.constants import messages as AccountMessages
 
@@ -65,7 +74,7 @@ class AccountService:
 
             response = GenericAPIResponseModel(
                 status=HTTPStatus.CREATED,
-                message=AccountMessages.SERVICE_CREATE_USER_SUCCESS,
+                message=AccountMessages.CREATE_NEW_USER_SUCCESS,
                 data=data_json,
             )
 
@@ -74,6 +83,61 @@ class AccountService:
             raise err
         except Exception as err:
             raise err
+        
+
+    @classmethod
+    def save_user_preferences(
+        cls,
+        payload: UserPreferencesSchema,
+        session: Session,
+        user: User,
+    ):
+        # Check if user has a UserPreferences already or not
+        existing_user_preference = session.query(UserPreferences) \
+            .filter(
+                UserPreferences.user_id == user.id, 
+                UserPreferences.is_deleted == False
+            ) \
+            .one_or_none()
+        
+        if existing_user_preference is not None:
+            raise UserPreferencesAlreadyExistsException()
+
+        # If None, go ahead and create user_prefs
+        time_now = get_datetime_now_jkt()
+        user_preferences_schema = UserPreferencesResponseSchema(
+            id=uuid.uuid4(),
+            created_at=time_now,
+            updated_at=time_now,
+            is_deleted=False,
+
+            role=payload.role,
+            industry=payload.industry,
+            location=payload.location,
+
+            is_active=True,
+            user_id=user.id,
+        )
+
+        user_preference_db = UserPreferences(**user_preferences_schema.model_dump())
+
+        try:
+            session.add(user_preference_db)
+            session.commit()
+
+            data_json = jsonable_encoder(user_preference_db)
+            
+            response = GenericAPIResponseModel(
+                status=HTTPStatus.CREATED,
+                message=AccountMessages.SAVE_USER_PREFERENCES_SUCCESS,
+                data=data_json,
+            )
+
+            return response
+        except Exception as err:
+            logger.error(f"Error while saving user preferences: {err.__str__()}")
+
+            raise SavePreferencesFailedException(err.__str__())
 
     # Utility methods
     @staticmethod
