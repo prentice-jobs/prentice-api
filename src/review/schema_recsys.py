@@ -14,6 +14,11 @@ from pydantic import (
 )
 
 
+class UniversalSimScoreSchema(BaseModel):
+    user_id: UUID4
+    review_id: UUID4
+    sim_score: float
+
 # 1 - Compute Similarity for New User
 class ComputeSimNewUser_Review(BaseModel):
     id: UUID4
@@ -22,13 +27,9 @@ class ComputeSimNewUser_Review(BaseModel):
         # NOTE - Assume Review.tags is the industry tags for review
     preferred_location: str
 
-class ComputeSimNewUser_SimScore(BaseModel):
-    user_id: UUID4
-    review_id: UUID4
-    sim_score: float
 
 class ComputeSimNewUser_NewUserInput(BaseModel):
-    id: UUID4 # 
+    id: UUID4 # User's ID
     preferred_role: str
     preferred_industry: str
     preferred_location: str
@@ -36,5 +37,18 @@ class ComputeSimNewUser_NewUserInput(BaseModel):
     vectorizer: Any
 
 # 2 - Compute Similarity for New Review
+class ComputeSimNewReview_User(BaseModel):
+    id: UUID4
+    preferred_role: str
+    preferred_industry: str
+    preferred_location: str
+
+class ComputeSimNewReview_NewReviewInput(BaseModel):
+    id: UUID4 # Review ID
+    review_role: str
+    review_industry: str
+    review_location: str
+    list_of_users: List[ComputeSimNewReview_User]
+    vectorizer: Any
 
 # 3 - Recommend Reviews

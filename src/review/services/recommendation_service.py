@@ -63,11 +63,13 @@ from src.review.exceptions_recsys import (
 )
 
 from src.review.schema_recsys import (
+    UniversalSimScoreSchema,
+
     ComputeSimNewUser_Review,
     ComputeSimNewUser_NewUserInput,
-    ComputeSimNewUser_SimScore,
 
-    
+    ComputeSimNewReview_User,
+    ComputeSimNewReview_NewReviewInput,
 )
 
 # TODO delete and adjust with ML model response
@@ -180,6 +182,7 @@ class RecommendationService:
 
         if vectorizer is None:
             raise RecsysVectorizerNotFoundException()
+        
 
         # Create query to fetch 4 columns of Users table using SQLAlchemy
         query = session.query(
@@ -267,12 +270,13 @@ class RecommendationService:
         # Hitung kemiripan antara pengguna baru dengan semua ulasan
         existing_reviews_combined = [f"{review.preferred_role} {review.preferred_industry} {review.preferred_location}" for review in list_of_reviews]
         new_user_sim_scores = cosine_similarity(new_user_tfidf, vectorizer.transform(existing_reviews_combined))
-        sim_scores_with_ids: List[ComputeSimNewUser_SimScore] = \
+        
+        sim_scores_with_ids: List[UniversalSimScoreSchema] = \
             [
-                ComputeSimNewUser_SimScore(
+                UniversalSimScoreSchema(
                     user_id=user_id, 
                     review_id=review.id, 
-                    sim_score=score
+                    sim_score=score,
                 ) \
                 for review, score in zip(list_of_reviews, new_user_sim_scores[0])
             ]
@@ -280,7 +284,10 @@ class RecommendationService:
         return sim_scores_with_ids
     
     @classmethod
-    def __compute_similarity_for_new_review(cls, review_id, review_role, review_industry, review_location, list_of_users, vectorizer):
+    def __compute_similarity_for_new_review(
+        cls, 
+        payload: ComputeSimNewReview_NewReviewInput,
+    ):
         ''' Function #2 - to compute similarity score for new review to all of the existing users '''
         '''
         type User = {
@@ -310,15 +317,31 @@ class RecommendationService:
         }
         '''
 
+        # Payload unpacking
+        review_id = payload.id
+        review_role = payload.review_role
+        review_industry = payload.review_industry
+        review_location = payload.review_location
+        list_of_users = payload.list_of_users
+        vectorizer =  payload.vectorizer
+
         # new_review_details adalah list yang berisi [role_str, tags_str, location_str]
         new_review_combined = ' '.join([review_role, review_industry, review_location])
         new_review_tfidf = vectorizer.transform([new_review_combined])
 
         # Hitung kemiripan antara semua pengguna dengan ulasan baru
-        existing_users_combined = [f"{d['preferred_role']} {d['preferred_industry']} {d['preferred_location']}" for d in list_of_users]
+        existing_users_combined = [f"{user_item.preferred_role} {user_item.preferred_industry} {user_item.preferred_location}" for user_item in list_of_users]
         new_review_sim_scores = cosine_similarity(vectorizer.transform(existing_users_combined), new_review_tfidf).reshape(1, -1)
-        sim_scores_with_ids = [{"user_id": user['id'], "review_id": review_id, "sim_score": score}
-                            for user, score in zip(list_of_users, new_review_sim_scores[0])]
+        
+        sim_scores_with_ids: List[UniversalSimScoreSchema] = \
+            [
+                UniversalSimScoreSchema(
+                    user_id=user_item.id,
+                    review_id=review_id,
+                    sim_score=score,
+                ) \
+                for user_item, score in zip(list_of_users, new_review_sim_scores[0])
+            ]
 
         return sim_scores_with_ids
     
@@ -469,7 +492,7 @@ class RecommendationService:
     @classmethod
     def __save_sim_scores_to_db(
         cls,
-        new_user_sim_scores: List[ComputeSimNewUser_SimScore],
+        new_user_sim_scores: List[UniversalSimScoreSchema],
         session: Session,
         user: User,
     ):
@@ -481,7 +504,6 @@ class RecommendationService:
         # Save a list of many-to-many SimScore object to DB
         # user_id is the same, with different review_ids (1 for each review in app)
 
-        # TODO
         # Check if user already has SimScore pair in DB. 
         # If yes, purge all the objects. Else, continue
         
