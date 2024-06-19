@@ -77,3 +77,6 @@ class CreateUserReviewSimScoresSchema(BaseModel):
     user_id: UUID4
     review_id: UUID4
     sim_score: Annotated[float, Field(ge=0, le=1)]
+
+class UserReviewSimScoresModelSchema(CreateUserReviewSimScoresSchema, PrenticeBaseSchema):
+    pass

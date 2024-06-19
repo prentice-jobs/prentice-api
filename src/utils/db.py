@@ -39,7 +39,6 @@ def get_db():
     db: Session = SessionLocal()
     try:
         yield db
-        logger.info("Yielding DB")
     except Exception as e:
         # Rollback the db if any exception occurs
         logger.error("Error when yielding DB with SQLAlchemy")

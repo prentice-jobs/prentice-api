@@ -50,6 +50,7 @@ from src.review.model import (
 
 from src.review.schema import (
     CreateUserReviewSimScoresSchema,
+    UserReviewSimScoresModelSchema,
 )
 from src.review.exceptions_recsys import (
     CreateSimScoresFailedException,
@@ -116,6 +117,7 @@ class RecommendationService:
 
             raise NoReviewsAvailableInPlatformException()
 
+        # TODO WORKING SAMPE SINI
         # Fetch Reviews table and parse to df
         reviews_df = pd.read_sql(
                 sql=review_query.statement,
@@ -263,10 +265,17 @@ class RecommendationService:
         new_user_tfidf = vectorizer.transform([new_user_combined])
 
         # Hitung kemiripan antara pengguna baru dengan semua ulasan
-        existing_reviews_combined = [f"{d['role']} {d['tags']} {d['location']}" for d in list_of_reviews]
+        existing_reviews_combined = [f"{review.preferred_role} {review.preferred_industry} {review.preferred_location}" for review in list_of_reviews]
         new_user_sim_scores = cosine_similarity(new_user_tfidf, vectorizer.transform(existing_reviews_combined))
-        sim_scores_with_ids: List[ComputeSimNewUser_SimScore] = [{"user_id": user_id, "review_id": review['id'], "sim_score": score}
-                            for review, score in zip(list_of_reviews, new_user_sim_scores[0])]
+        sim_scores_with_ids: List[ComputeSimNewUser_SimScore] = \
+            [
+                ComputeSimNewUser_SimScore(
+                    user_id=user_id, 
+                    review_id=review.id, 
+                    sim_score=score
+                ) \
+                for review, score in zip(list_of_reviews, new_user_sim_scores[0])
+            ]
 
         return sim_scores_with_ids
     
@@ -472,19 +481,17 @@ class RecommendationService:
         # Save a list of many-to-many SimScore object to DB
         # user_id is the same, with different review_ids (1 for each review in app)
 
+        # TODO
         # Check if user already has SimScore pair in DB. 
         # If yes, purge all the objects. Else, continue
-        existing_sim_scores = session.query(UserReviewSimilarityScores) \
-            .filter(
-                UserReviewSimilarityScores.user_id == user.id,
-                UserReviewSimilarityScores.is_deleted == False,
-            )
         
-        if existing_sim_scores.count() > 0:
-            # Purge previous SimScores
-            existing_sim_scores.delete()
-        
+        is_sim_score_exists_and_purged = cls.__check_sim_score_exists_and_purge(
+            session=session,
+            user=user,
+        )
 
+        logger.debug("Is sim score exists and is purged? {is_sim_score_exists_and_purged}")
+        
         # Compute the new SimScore pair
         sim_scores_dict_list: List[CreateUserReviewSimScoresSchema] = []
 
@@ -539,15 +546,15 @@ class RecommendationService:
     ) -> List[UserReviewSimilarityScores]:
         # Use the more efficient, `session.add_all(List[obj])` API
 
-        sim_scores_model_schemas: List[UserReviewSimilarityScores] = List()
+        sim_scores_model_schemas: List[UserReviewSimilarityScores] = []
         for score in sim_scores_dict_list:
-            schema = cls.__create_user_review_sim_scores_schema(
+            model_schema: UserReviewSimScoresModelSchema = cls.__create_user_review_sim_scores_schema(
                 payload=score,
             )
 
-            model_schema = UserReviewSimilarityScores(**schema.model_dump())
+            model_db = UserReviewSimilarityScores(**model_schema.model_dump())
 
-            sim_scores_model_schemas.append(model_schema)
+            sim_scores_model_schemas.append(model_db)
 
         try:
             session.add_all(sim_scores_model_schemas)
@@ -564,10 +571,10 @@ class RecommendationService:
     def __create_user_review_sim_scores_schema(
         cls,
         payload: CreateUserReviewSimScoresSchema,
-    ):
+    ) -> UserReviewSimScoresModelSchema:
         time_now = get_datetime_now_jkt()
 
-        sim_scores_schema = CreateUserReviewSimScoresSchema(
+        sim_scores_schema = UserReviewSimScoresModelSchema(
             id=uuid.uuid4(),
             created_at=time_now,
             updated_at=time_now,
@@ -579,3 +586,26 @@ class RecommendationService:
         )
 
         return sim_scores_schema
+    
+    @classmethod
+    def __check_sim_score_exists_and_purge(
+        cls,
+        session: Session,
+        user: User,
+    ):
+        # Check if user already has SimScore pair in DB. 
+        # If yes, purge all the objects. Else, continue
+        existing_sim_scores = session.query(UserReviewSimilarityScores) \
+            .filter(
+                UserReviewSimilarityScores.user_id == user.id,
+                UserReviewSimilarityScores.is_deleted == False,
+            )
+        
+        if existing_sim_scores.count() > 0:
+            # Purge previous SimScores
+            existing_sim_scores.delete()
+            session.commit()
+
+            return True
+        
+        return False
