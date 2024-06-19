@@ -84,7 +84,7 @@ class RecommendationService:
         """
 
         # TODO handle edge cases (non happy path)
-        
+
         # Load vectorizer object
         vectorizer = CloudStorageService().fetch_recsys_vectorizer()
 
@@ -136,44 +136,15 @@ class RecommendationService:
             vectorizer=vectorizer,
         )
 
-        new_user_sim_scores = cls._compute_similarity_for_new_user(
+        new_user_sim_scores = cls.__compute_similarity_for_new_user(
             payload=sim_scores_dict_list,
         )
 
-        # Save a list of many-to-many SimScore object to DB
-        # user_id is the same, with different review_ids (1 for each review in app)
-
-        # Check if user already has SimScore pair in DB. 
-        # If yes, purge all the objects. Else, continue
-        existing_sim_scores = session.query(UserReviewSimilarityScores) \
-            .filter(
-                UserReviewSimilarityScores.user_id == user.id,
-                UserReviewSimilarityScores.is_deleted == False,
-            )
-        
-        if existing_sim_scores.count() > 0:
-            # Purge previous SimScores
-            existing_sim_scores.delete()
-        
-
-        # Compute the new SimScore pair
-        sim_scores_dict_list: List[CreateUserReviewSimScoresSchema] = []
-
-        for score_dict in new_user_sim_scores:
-            item = CreateUserReviewSimScoresSchema(
-                user_id=score_dict.user_id,
-                review_id=score_dict.review_id,
-                sim_score=score_dict.sim_score
-            )
-
-            sim_scores_dict_list.append(item)
-
-        db_user_review_sim_scores = cls._create_bulk_user_review_sim_scores_db(
-            sim_scores_dict_list=sim_scores_dict_list,
+        created_count = cls.__save_sim_scores_to_db(
+            new_user_sim_scores=new_user_sim_scores,
             session=session,
+            user=user,
         )
-
-        created_count = len(db_user_review_sim_scores)
 
         response = GenericAPIResponseModel(
             status=HTTPStatus.CREATED,
@@ -219,7 +190,7 @@ class RecommendationService:
 
         # Compute similarity for new user
         # TODO user_id field is now `id` only - change var names
-        new_review_sim_scores = cls._compute_similarity_for_new_review(
+        new_review_sim_scores = cls.__compute_similarity_for_new_review(
             review_id=review.id,
             review_role=preferred_role,
             review_industry=preferred_industry,
@@ -234,7 +205,7 @@ class RecommendationService:
         return new_review_sim_scores
 
     @classmethod
-    def _compute_similarity_for_new_user(
+    def __compute_similarity_for_new_user(
         cls, 
         payload: ComputeSimNewUser_NewUserInput,
     ):
@@ -292,7 +263,8 @@ class RecommendationService:
 
         return sim_scores_with_ids
     
-    def _compute_similarity_for_new_review(cls, review_id, review_role, review_industry, review_location, list_of_users, vectorizer):
+    @classmethod
+    def __compute_similarity_for_new_review(cls, review_id, review_role, review_industry, review_location, list_of_users, vectorizer):
         ''' Function #2 - to compute similarity score for new review to all of the existing users '''
         '''
         type User = {
@@ -336,7 +308,7 @@ class RecommendationService:
     
 
     @classmethod
-    def _recommend_reviews(
+    def __recommend_reviews(
         cls, 
         preferred_role,  
             # User's preferred role
@@ -479,18 +451,62 @@ class RecommendationService:
         return combined_reviews[:top_n]
     
     @classmethod
-    def _save_sim_scores_to_db():
-        # NOTE - Since our many to many table acts as a similarity matrix that gets updated continuously, we must check whether a many to many relation exists and "replace" (delete-then-insert) them with the updated relations.
-        pass
+    def __save_sim_scores_to_db(
+        cls,
+        new_user_sim_scores: List[ComputeSimNewUser_SimScore],
+        session: Session,
+        user: User,
+    ):
+        # NOTE - Since our many to many table acts as a similarity matrix
+        #  that gets updated continuously, we must check whether a many to many
+        #  relation exists and "replace" (delete-then-insert) 
+        #  them with the updated relations.
+        
+        # Save a list of many-to-many SimScore object to DB
+        # user_id is the same, with different review_ids (1 for each review in app)
+
+        # Check if user already has SimScore pair in DB. 
+        # If yes, purge all the objects. Else, continue
+        existing_sim_scores = session.query(UserReviewSimilarityScores) \
+            .filter(
+                UserReviewSimilarityScores.user_id == user.id,
+                UserReviewSimilarityScores.is_deleted == False,
+            )
+        
+        if existing_sim_scores.count() > 0:
+            # Purge previous SimScores
+            existing_sim_scores.delete()
+        
+
+        # Compute the new SimScore pair
+        sim_scores_dict_list: List[CreateUserReviewSimScoresSchema] = []
+
+        for score_dict in new_user_sim_scores:
+            item = CreateUserReviewSimScoresSchema(
+                user_id=score_dict.user_id,
+                review_id=score_dict.review_id,
+                sim_score=score_dict.sim_score
+            )
+
+            sim_scores_dict_list.append(item)
+
+        db_user_review_sim_scores = cls.__create_bulk_user_review_sim_scores_db(
+            sim_scores_dict_list=sim_scores_dict_list,
+            session=session,
+        )
+
+        created_count = len(db_user_review_sim_scores)
+
+        return created_count
 
     # Utility methods
     @classmethod
-    def _create_user_review_sim_scores_db(
+    def __create_user_review_sim_scores_db(
         cls,
         payload: CreateUserReviewSimScoresSchema,
         session: Session,
     ):
-        sim_scores_schema = cls._create_user_review_sim_scores_schema(
+        sim_scores_schema = cls.__create_user_review_sim_scores_schema(
             payload=payload,
         )
 
@@ -509,7 +525,7 @@ class RecommendationService:
             raise CreateSimScoresFailedException(err.__str__())
         
     @classmethod
-    def _create_bulk_user_review_sim_scores_db(
+    def __create_bulk_user_review_sim_scores_db(
         cls,
         sim_scores_dict_list: List[CreateUserReviewSimScoresSchema],
         session: Session,
@@ -518,7 +534,7 @@ class RecommendationService:
 
         sim_scores_model_schemas: List[UserReviewSimilarityScores] = List()
         for score in sim_scores_dict_list:
-            schema = cls._create_user_review_sim_scores_schema(
+            schema = cls.__create_user_review_sim_scores_schema(
                 payload=score,
             )
 
@@ -538,7 +554,7 @@ class RecommendationService:
             raise CreateSimScoresFailedException(err.__str__())
 
     @classmethod
-    def _create_user_review_sim_scores_schema(
+    def __create_user_review_sim_scores_schema(
         cls,
         payload: CreateUserReviewSimScoresSchema,
     ):
