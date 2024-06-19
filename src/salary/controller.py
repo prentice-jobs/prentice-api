@@ -79,7 +79,7 @@ def get_locations():
 def post_compare_salary(
     payload: SalaryCreate = Body(),
     db: Session = Depends(get_db),
-    # user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user)
 ):
     try:
         service = SalaryService()
