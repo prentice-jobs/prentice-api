@@ -9,6 +9,7 @@ from fastapi import (
 from sqlalchemy.orm import Session
 from uuid import UUID
 from fastapi.encoders import jsonable_encoder
+from http import HTTPStatus
 
 from src.company.models import Companies
 from src.company.schema import CompanyCreate, CompanyName, CompanyUpdate
@@ -17,6 +18,8 @@ from src.core.schema import GenericAPIResponseModel
 from src.company import service, schema
 from src.review.services.upload_service import UploadService
 from src.utils.db import get_db
+from src.account.model import User
+from src.account.security import get_current_user
 
 VERSION = "v1"
 ENDPOINT = "company"
@@ -28,7 +31,7 @@ company_router = APIRouter(prefix=f"/{VERSION}/{ENDPOINT}", tags=[ENDPOINT])
     response_description="Fetch all the companies",
     status_code=http.HTTPStatus.OK,
 )
-def fetch_all_companies(db: Session = Depends(get_db)):
+def fetch_all_companies(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     service = CompanyService()
     companies = service.get_all_companies(db)
     return companies
