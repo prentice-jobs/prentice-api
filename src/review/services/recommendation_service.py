@@ -58,6 +58,14 @@ from src.review.constants import messages as ReviewMessages
 
 from src.review.exceptions import RecsysVectorizerNotFoundException
 
+from src.review.schema_recsys import (
+    ComputeSimNewUser_Review,
+    ComputeSimNewUser_NewUserInput,
+    ComputeSimNewUser_SimScore,
+
+    
+)
+
 # TODO delete and adjust with ML model response
 from src.review.constants.temporary import FEED_REVIEWS_DUMMY
 
@@ -67,54 +75,112 @@ class RecommendationService:
     # Business logic methods
     @classmethod
     def compute_similarity_for_new_user(
-        cls, 
-        preferred_role: str,
-        preferred_industry: str,
-        preferred_location: str,
+        cls,
         user: User,
         session: Session,
     ) -> List[Dict[str, Any]]:
         """
         Driver method for ML algorithm `_compute_similarity_for_new_user()`
         """
+
+        # TODO handle edge cases (non happy path)
+        
         # Load vectorizer object
         vectorizer = CloudStorageService().fetch_recsys_vectorizer()
 
         if vectorizer is None:
             raise RecsysVectorizerNotFoundException()
 
-        # Create query to fetch 4 columns of Review table using SQLAlchemy
-        query = session.query(
-                CompanyReview.id, 
-                CompanyReview.role, 
-                CompanyReview.tags, 
-                CompanyReview.location,
-            ) 
-
-        # Parse SQL to pandas df
-        reviews_df = pd.read_sql(
-            sql=query.statement,
-            con=sqlalchemy_engine,
+        # Fetch UserPreferences of newly created user
+        new_user_preferences = session.query(
+                UserPreferences
+            ) \
+            .filter(
+                UserPreferences.user_id == user.id,
+                UserPreferences.is_deleted == False,
+            ) \
+            .one()
+        
+        # Create query to fetch Review data using SQLAlchemy
+        review_query = session.query(
+            CompanyReview.id, 
+            CompanyReview.role, 
+            CompanyReview.tags, 
+            CompanyReview.location,
         )
-            
-        list_of_reviews = reviews_df.to_dict(orient='records')
+
+        # Fetch Reviews table and parse to df
+        reviews_df = pd.read_sql(
+                sql=review_query.statement,
+                con=sqlalchemy_engine,
+            ) \
+            .rename(
+                columns={
+                    # Rename according to ML algo spec
+                    'role': 'preferred_role',
+                    'tags': 'preferred_industry',
+                    'location': 'preferred_location'
+                }
+            )
+
+        list_of_reviews: List[ComputeSimNewUser_Review] = \
+            reviews_df.to_dict(orient='records')
 
         # Compute similarity for new user
-        # TODO review_id field is now `id` only
-        new_user_sim_scores = cls._compute_similarity_for_new_user(
-            user_id=user.id,
-            preferred_role=preferred_role,
-            preferred_industry=preferred_industry,
-            preferred_location=preferred_location,
+        sim_scores_dict_list = ComputeSimNewUser_NewUserInput(
+            id=user.id, # New user's id
+            preferred_role=new_user_preferences.role,
+            preferred_industry=new_user_preferences.industry,
+            preferred_location=new_user_preferences.location,
             list_of_reviews=list_of_reviews,
             vectorizer=vectorizer,
         )
 
-        # Save many-to-many SimScore object to DB
+        new_user_sim_scores = cls._compute_similarity_for_new_user(
+            payload=sim_scores_dict_list,
+        )
+
+        # Save a list of many-to-many SimScore object to DB
         # user_id is the same, with different review_ids (1 for each review in app)
+
+        # Check if user already has SimScore pair in DB. 
+        # If yes, purge all the objects. Else, continue
+        existing_sim_scores = session.query(UserReviewSimilarityScores) \
+            .filter(
+                UserReviewSimilarityScores.user_id == user.id,
+                UserReviewSimilarityScores.is_deleted == False,
+            )
+        
+        if existing_sim_scores.count() > 0:
+            # Purge previous SimScores
+            existing_sim_scores.delete()
         
 
-        return new_user_sim_scores
+        # Compute the new SimScore pair
+        sim_scores_dict_list: List[CreateUserReviewSimScoresSchema] = []
+
+        for score_dict in new_user_sim_scores:
+            item = CreateUserReviewSimScoresSchema(
+                user_id=score_dict.user_id,
+                review_id=score_dict.review_id,
+                sim_score=score_dict.sim_score
+            )
+
+            sim_scores_dict_list.append(item)
+
+        db_user_review_sim_scores = cls._create_bulk_user_review_sim_scores_db(
+            sim_scores_dict_list=sim_scores_dict_list,
+            session=session,
+        )
+
+        created_count = len(db_user_review_sim_scores)
+
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.CREATED,
+            message=f"Created {created_count} SimScore objects in db",
+        )
+
+        return response
 
     @classmethod
     def compute_similarity_for_new_review(
@@ -155,9 +221,9 @@ class RecommendationService:
         # TODO user_id field is now `id` only - change var names
         new_review_sim_scores = cls._compute_similarity_for_new_review(
             review_id=review.id,
-            preferred_role=preferred_role,
-            preferred_industry=preferred_industry,
-            preferred_location=preferred_location,
+            review_role=preferred_role,
+            review_industry=preferred_industry,
+            review_location=preferred_location,
             list_of_users=list_of_users,
             vectorizer=vectorizer,
         )
@@ -168,8 +234,11 @@ class RecommendationService:
         return new_review_sim_scores
 
     @classmethod
-    def _compute_similarity_for_new_user(cls, user_id, preferred_role, preferred_industry, preferred_location, list_of_reviews, vectorizer):
-        ''' Function to compute similarity score for new user to all of the existing reviews '''
+    def _compute_similarity_for_new_user(
+        cls, 
+        payload: ComputeSimNewUser_NewUserInput,
+    ):
+        ''' Function #1 - to compute similarity score for new user to all of the existing reviews '''
         '''
         type Review = {'id': 193585,
                         'company_id': 37,
@@ -190,12 +259,12 @@ class RecommendationService:
         }
 
         type NewUserInput = {
-        id: 1,
-        preferred_role: 'Data Scientist Intern',
-        preferred_industry: 'Healthcare',
-        preferred_location: 'Jakarta',
-        list_of_reviews: Review[],
-        vectorizer: TfidfVectorizer()
+            id: 1, # New User's UUID
+            preferred_role: 'Data Scientist Intern',
+            preferred_industry: 'Healthcare',
+            preferred_location: 'Jakarta',
+            list_of_reviews: Review[],
+            vectorizer: TfidfVectorizer()
         }
 
         compute_similarity_for_new_user(input: NewUserInput) = {
@@ -203,39 +272,49 @@ class RecommendationService:
         }
         '''
 
+        # Payload unpacking
+        user_id = payload.id
+        preferred_role = payload.preferred_role
+        preferred_industry = payload.preferred_industry
+        preferred_location = payload.preferred_location
+        list_of_reviews = payload.list_of_reviews
+        vectorizer = payload.vectorizer
+
+        # Core ML Algorithm
         new_user_combined = ' '.join([preferred_role, preferred_industry, preferred_location])
         new_user_tfidf = vectorizer.transform([new_user_combined])
 
         # Hitung kemiripan antara pengguna baru dengan semua ulasan
         existing_reviews_combined = [f"{d['role']} {d['tags']} {d['location']}" for d in list_of_reviews]
         new_user_sim_scores = cosine_similarity(new_user_tfidf, vectorizer.transform(existing_reviews_combined))
-        sim_scores_with_ids = [{"user_id": user_id, "review_id": review['id'], "sim_score": score}
+        sim_scores_with_ids: List[ComputeSimNewUser_SimScore] = [{"user_id": user_id, "review_id": review['id'], "sim_score": score}
                             for review, score in zip(list_of_reviews, new_user_sim_scores[0])]
 
         return sim_scores_with_ids
     
-    def _compute_similarity_for_new_review(cls, review_id, preferred_role, preferred_industry, preferred_location, list_of_users, vectorizer):
-        ''' Function to compute similarity score for new review to all of the existing users '''
+    def _compute_similarity_for_new_review(cls, review_id, review_role, review_industry, review_location, list_of_users, vectorizer):
+        ''' Function #2 - to compute similarity score for new review to all of the existing users '''
         '''
-        type User = {'id': 1,
+        type User = {
+                    'id': 1,
                     'preferred_role': 'Data Scientist Intern',
                     'preferred_industry': 'Healthcare',
                     'preferred_location': 'Jakarta'
-                        }
+        }
 
         type SimScore = {
-        'user_id': 2,
-        'review_id': 4,
-        'sim_score': 0.2
+            'user_id': 2,
+            'review_id': 4,
+            'sim_score': 0.2
         }
 
         type NewReviewInput = {
-        id: 1,
-        preferred_role: 'Data Scientist Intern',
-        preferred_industry: 'Healthcare',
-        preferred_location: 'Jakarta',
-        list_of_users: User[],
-        vectorizer: TfidfVectorizer()
+            id: 1,
+            review_role: 'Data Scientist Intern',
+            review_industry: 'Healthcare',
+            review_location: 'Jakarta',
+            list_of_users: User[],
+            vectorizer: TfidfVectorizer()
         }
 
         compute_similarity_for_new_review(input: NewReviewInput) = {
@@ -244,7 +323,7 @@ class RecommendationService:
         '''
 
         # new_review_details adalah list yang berisi [role_str, tags_str, location_str]
-        new_review_combined = ' '.join([preferred_role, preferred_industry, preferred_location])
+        new_review_combined = ' '.join([review_role, review_industry, review_location])
         new_review_tfidf = vectorizer.transform([new_review_combined])
 
         # Hitung kemiripan antara semua pengguna dengan ulasan baru
@@ -257,11 +336,26 @@ class RecommendationService:
     
 
     @classmethod
-    def _recommend_reviews(cls, preferred_role, preferred_industry, preferred_location, reviews, sim_scores_user, top_n=5, random_factor=0.4, location_weight=2.0):
-        '''Function to get top_n recommended reviews'''
+    def _recommend_reviews(
+        cls, 
+        preferred_role,  
+            # User's preferred role
+        preferred_industry, 
+            # User's preferred industry
+            # NOTE - not given additional weight as the others,
+        preferred_location, 
+            # User's preferred location
+        reviews,
+            # List[Review]
+        sim_scores_user, 
+        top_n=5, 
+        random_factor=0.4, 
+        location_weight=2.0
+    ):
+        '''Function #3 - to get top_n recommended reviews'''
 
         '''
-        type Review = {'id': 193585,
+        type Review = {'id': 193585, # UUID
                         'company_id': 37,
                         'author_id': 830,
                         'location': 'Depok',
@@ -274,20 +368,22 @@ class RecommendationService:
                         }
 
         type SimScore = {
-        'user_id': 2,
-        'review_id': 4,
-        'sim_score': 0.2
+            'user_id': 2,
+            'review_id': 4,
+            'sim_score': 0.2
         }
 
         type RecsysInput = {
-        preferred_role: 'Data Scientist Intern',
-        preferred_industry: 'Healthcare',
-        preferred_location: 'Jakarta',
-        reviews: Review[],
-        sim_scores_user: SimScore[],  // list of SimScore only for specified user_id
-        top_n: 100,
-        random_factor: 0.6,
-        location_weight: 2.0
+            preferred_role: 'Data Scientist Intern',
+            preferred_industry: 'Healthcare',
+            preferred_location: 'Jakarta',
+            reviews: Review[],
+            sim_scores_user: SimScore[],  
+                // List of SimScore only for specified user_id
+                // Filter based on user_id
+            top_n: 100,
+            random_factor: 0.6,
+            location_weight: 2.0
         }
 
         recommend_reviews(input: RecsysInput) = {
@@ -389,16 +485,13 @@ class RecommendationService:
 
     # Utility methods
     @classmethod
-    def _create_user_review_sim_scores_model(
+    def _create_user_review_sim_scores_db(
         cls,
         payload: CreateUserReviewSimScoresSchema,
         session: Session,
-        user: User,
     ):
         sim_scores_schema = cls._create_user_review_sim_scores_schema(
             payload=payload,
-            session=session,
-            user=user,
         )
 
         sim_scores_obj = UserReviewSimilarityScores(**sim_scores_schema.model_dump())
@@ -414,13 +507,40 @@ class RecommendationService:
             
             session.rollback()
             raise CreateSimScoresFailedException(err.__str__())
+        
+    @classmethod
+    def _create_bulk_user_review_sim_scores_db(
+        cls,
+        sim_scores_dict_list: List[CreateUserReviewSimScoresSchema],
+        session: Session,
+    ) -> List[UserReviewSimilarityScores]:
+        # Use the more efficient, `session.add_all(List[obj])` API
+
+        sim_scores_model_schemas: List[UserReviewSimilarityScores] = List()
+        for score in sim_scores_dict_list:
+            schema = cls._create_user_review_sim_scores_schema(
+                payload=score,
+            )
+
+            model_schema = UserReviewSimilarityScores(**schema.model_dump())
+
+            sim_scores_model_schemas.append(model_schema)
+
+        try:
+            session.add_all(sim_scores_model_schemas)
+            session.commit()
+
+            return sim_scores_model_schemas
+        except Exception as err:
+            logger.error(err.__str__())
+            
+            session.rollback()
+            raise CreateSimScoresFailedException(err.__str__())
 
     @classmethod
     def _create_user_review_sim_scores_schema(
         cls,
         payload: CreateUserReviewSimScoresSchema,
-        session: Session,
-        user: User,
     ):
         time_now = get_datetime_now_jkt()
 
