@@ -7,6 +7,7 @@ class RoleCompareSalaryEnum(str, Enum):
     data_engineer = "Data Engineer"
     data_analyst = "Data Analyst"
     web_developer = "Web Developer"
+    devops_engineer_intern = "DevOps Engineer Intern"
 
 
 class CompanyCompareSalaryEnum(str, Enum):

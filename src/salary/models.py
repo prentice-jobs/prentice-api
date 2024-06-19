@@ -19,6 +19,7 @@ class Salaries(Base):
                 "Data Engineer",
                 "Data Analyst",
                 "Web Developer",
+                "DevOps Engineer Intern",
                 name="role_enum",
             )
         ),
