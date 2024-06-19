@@ -19,8 +19,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_unique_constraint('company_reviews_id_unique', 'company_reviews', ['id'])
-
     op.create_table(
         'user_review_similarity_scores',
         sa.Column('id', sa.UUID(), autoincrement=False),
@@ -69,4 +67,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table('user_review_recommendations_cache')
     op.drop_table('user_review_similarity_scores')
-    op.drop_constraint('company_reviews_id_unique', 'company_reviews', type_='unique')

@@ -44,6 +44,8 @@ def upgrade() -> None:
         sa.Column('offer_letter_url', sa.String()),
         sa.Column('annual_salary', sa.BigInteger()),
         sa.Column('salary_currency', sa.String(3)),
+
+        sa.PrimaryKeyConstraint('id'),
     )
 
 
