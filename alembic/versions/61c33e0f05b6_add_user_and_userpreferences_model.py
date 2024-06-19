@@ -43,9 +43,9 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True)),
         sa.Column('is_deleted', sa.Boolean()),
 
-        sa.Column('role', sa.String(255), nullable=True),
-        sa.Column('industry', sa.String(255), nullable=True),
-        sa.Column('location', sa.String(255), nullable=True),
+        sa.Column('role', sa.String(255)),
+        sa.Column('industry', sa.String(255)),
+        sa.Column('location', sa.String(255)),
 
         sa.Column('user_id', sa.UUID(), nullable=False),
 
