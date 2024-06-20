@@ -91,8 +91,6 @@ class RecommendationService:
         """
         Driver method for ML algorithm `_compute_similarity_for_new_user()`
         """
-        # TODO handle edge cases (non happy path)
-
         # Load vectorizer object
         vectorizer = CloudStorageService().fetch_recsys_vectorizer()
 
@@ -122,7 +120,6 @@ class RecommendationService:
 
             raise NoReviewsAvailableInPlatformException()
 
-        # TODO WORKING SAMPE SINI
         # Fetch Reviews table and parse to df
         reviews_df = pd.read_sql(
                 sql=review_query.statement,
@@ -164,6 +161,8 @@ class RecommendationService:
             status=HTTPStatus.CREATED,
             message=f"Created {created_count} SimScore objects in db",
         )
+
+        logger.info("Successfully recomputed SimScore Matrix for New User")
 
         return response
 
@@ -246,6 +245,8 @@ class RecommendationService:
             status=HTTPStatus.CREATED,
             message=f"Created {created_count} SimScore objects in db",
         )
+
+        logger.info("Successfully recomputed SimScore Matrix for New Review")
 
         return response
     
@@ -640,8 +641,6 @@ class RecommendationService:
                 review=review,
             )
 
-        logger.debug("Is sim score exists and is purged? {is_sim_score_exists_and_purged}")
-        
         # Compute the new SimScore pair
         sim_scores_dict_list: List[CreateUserReviewSimScoresSchema] = []
 

@@ -31,7 +31,10 @@ from src.account.exceptions import (
     SavePreferencesFailedException,
     UserPreferencesAlreadyExistsException,
 )
+
 from src.account.constants import messages as AccountMessages
+
+from src.review.services.recommendation_service import RecommendationService
 
 class AccountService:   
     # Business logic methods
@@ -68,6 +71,12 @@ class AccountService:
             data = RegisterResponseSchema(
                 email=user.email, 
                 created_at=user.created_at
+            )
+
+            # RECSYS - Compute Similarity Score Matrix
+            RecommendationService.compute_similarity_for_new_user(
+                user=user,
+                session=session,
             )
 
             data_json = jsonable_encoder(data)

@@ -127,22 +127,12 @@ class ReviewService:
                 title=company_review_model.title,
             )
 
-            # RecSys action for new review
-            user_preferences = session.query(UserPreferences) \
-                                .filter(UserPreferences.user_id == user.id, UserPreferences.is_deleted == False) \
-                                .one()
-
-            # TODO in development
-            # Compute Similarity Score Matrix
-            # RecommendationService.compute_similarity_for_new_review(
-            #     preferred_role=user_preferences.role,
-            #     preferred_industry=user_preferences.industry,
-            #     preferred_location=user_preferences.location,
-            #     user=user,
-            #     review=company_review_model,
-            #     session=session,
-            # )
-
+            # RECSYS - Compute Similarity Score Matrix
+            RecommendationService.compute_similarity_for_new_review(
+                target_review_id=company_review_model.id,
+                session=session,
+            )
+            
             review_data_json = jsonable_encoder(review_data)
 
             response = GenericAPIResponseModel(
