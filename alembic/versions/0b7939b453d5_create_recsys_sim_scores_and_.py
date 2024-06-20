@@ -34,10 +34,12 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["user_id"], ["users.id"],
             name="fk_sim_scores_user",
+            ondelete='CASCADE',
         ),
         sa.ForeignKeyConstraint(
             ["review_id"], ["company_reviews.id"],
             name="fk_sim_scores_review",
+            ondelete='CASCADE',
         )
     )
 
@@ -56,10 +58,12 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["user_id"], ["users.id"],
             name="fk_sim_scores_user",
+            ondelete='CASCADE',
         ),
         sa.ForeignKeyConstraint(
             ["review_id"], ["company_reviews.id"],
             name="fk_sim_scores_review",
+            ondelete='CASCADE', 
         )
     )
 
