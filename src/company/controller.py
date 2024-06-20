@@ -1,4 +1,5 @@
 import http
+import uuid
 from fastapi import (
     APIRouter,
     Depends,
@@ -12,7 +13,7 @@ from fastapi.encoders import jsonable_encoder
 from http import HTTPStatus
 
 from src.company.models import Companies
-from src.company.schema import CompanyCreate, CompanyName, CompanyUpdate
+from src.company.schema import CompanyCreate, CompanyName, CompanyUpdate, CompanyCreateRequest
 from src.company.service import CompanyService
 from src.core.schema import GenericAPIResponseModel
 from src.company import service, schema
@@ -20,6 +21,7 @@ from src.review.services.upload_service import UploadService
 from src.utils.db import get_db
 from src.account.model import User
 from src.account.security import get_current_user
+from src.utils.time import get_datetime_now_jkt
 
 VERSION = "v1"
 ENDPOINT = "company"
@@ -75,13 +77,15 @@ def fetch_company_by_id(company_id: UUID, db: Session = Depends(get_db), user: U
 
 
 @company_router.post("/", status_code=http.HTTPStatus.CREATED)
-def create_company(db: Session = Depends(get_db), payload: CompanyCreate = Body(), user: User = Depends(get_current_user)):
+def create_company(db: Session = Depends(get_db), payload: CompanyCreateRequest = Body()):
     service = CompanyService()
 
+    time_now = get_datetime_now_jkt()
+
     req_company = CompanyCreate(
-        id=payload.id,
-        created_at=payload.created_at,
-        updated_at=payload.updated_at,
+        id=uuid.uuid4(),
+        created_at=time_now,
+        updated_at=time_now,
         is_deleted=payload.is_deleted,
         display_name=payload.display_name,
         logo_url=payload.logo_url,
