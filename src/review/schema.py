@@ -68,6 +68,9 @@ class CreateCommentLikeSchema(BaseModel):
 
 class CommentLikeModelSchema(CreateCommentLikeSchema, PrenticeBaseSchema):
     liker_id: UUID4
+
+class SentimentAnalysisSchema(BaseModel):
+    review_description: str
     
 class CreateUserReviewSimScoresSchema(BaseModel):
     """

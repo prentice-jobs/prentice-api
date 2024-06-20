@@ -34,11 +34,14 @@ from src.review.schema import (
     CreateCommentSchema,
     CreateCommentLikeSchema,
     ComputeSimNewReviewRequest,
+    SentimentAnalysisSchema
 )
 
 from src.review.utils import CommentLikeActions
 
 from prentice_logger import logger
+
+from src.review.services.review_service import ReviewService
 
 
 VERSION = "v1"
@@ -236,3 +239,23 @@ def upload_offer_letter(
     )
 
     return build_api_response(response)
+
+@review_router.post("/sentiment", status_code=HTTPStatus.OK)
+def compute_sentiment(
+    payload: SentimentAnalysisSchema = Body(),
+    session: Session = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    try:
+        service = ReviewService()
+        response = service.query_sentiment_analysis(payload.review_description)
+
+        return response
+    except Exception as err:
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=err.__str__(),
+            error=err.__str__()
+        )
+
+        return build_api_response(response)
