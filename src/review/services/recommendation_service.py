@@ -373,7 +373,8 @@ class RecommendationService:
                 UniversalSimScoreSchema(
                     user_id=user_id, 
                     review_id=review.id, 
-                    sim_score=score,
+                    # NOTE - ROUND TO 3 DECIMAL DIGITS TO AVOID FLOATING POINT ERRORS
+                    sim_score=round(score, 3), 
                 ) \
                 for review, score in zip(list_of_reviews, new_user_sim_scores[0])
             ]
@@ -433,9 +434,10 @@ class RecommendationService:
         sim_scores_with_ids: List[UniversalSimScoreSchema] = \
             [
                 UniversalSimScoreSchema(
-                    user_id=user_item.user_id, # Uses user-id and NOT id!
+                    user_id=user_item.user_id, # Uses user_id and NOT id!
                     review_id=review_id,
-                    sim_score=score,
+                    # NOTE - ROUND TO 3 DECIMAL DIGITS TO AVOID FLOATING POINT ERRORS
+                    sim_score=round(score, 3), 
                 ) \
                 for user_item, score in zip(list_of_users, new_review_sim_scores[0])
             ]
@@ -583,33 +585,20 @@ class RecommendationService:
         else:
             nearby_random_reviews = []
 
-        # Combine and ensure diversity in roles
+        # Combine top reviews and nearby random reviews
         combined_reviews = top_reviews + nearby_random_reviews
-        unique_roles = set()
-        final_reviews = []
-
-        for review in combined_reviews:
-            if review.role not in unique_roles:
-                final_reviews.append(review)
-                unique_roles.add(review.role)
-                if len(final_reviews) == top_n:
-                    break
 
         # If the combined reviews are less than top_n, add more from the remaining pool
-        if len(final_reviews) < top_n:
-            additional_reviews_needed = top_n - len(final_reviews)
-            for review_id in remaining_ids[:additional_reviews_needed]:
-                review = review_dict[review_id]
-                if review.role not in unique_roles:
-                    final_reviews.append(review)
-                    unique_roles.add(review.role)
-                    if len(final_reviews) == top_n:
-                        break
+        if len(combined_reviews) < top_n:
+            additional_reviews_needed = top_n - len(combined_reviews)
+            additional_reviews = [review_dict[review_id] for review_id in remaining_ids[:additional_reviews_needed]]
+            combined_reviews.extend(additional_reviews)
 
         # Shuffle the combined recommendations
-        np.random.shuffle(final_reviews)
+        np.random.shuffle(combined_reviews)
 
-        return final_reviews[:top_n]
+        # Return the top_n reviews
+        return combined_reviews[:top_n]
     
     # Utility methods
 
