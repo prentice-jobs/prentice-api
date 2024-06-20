@@ -5,6 +5,8 @@ from fastapi import (
     Body,
     HTTPException,
 )
+from http import HTTPStatus
+from typing import List
 from sqlalchemy.orm import Session
 from uuid import UUID
 from fastapi.encoders import jsonable_encoder
@@ -30,12 +32,54 @@ ENDPOINT = "compare"
 
 salary_router = APIRouter(prefix=f"/{VERSION}/{ENDPOINT}", tags=[ENDPOINT])
 
+roles = ["Software Engineer Intern", "Quality Assurance Intern",
+         'Business Development Intern', "Data Scientist Intern",
+         "Product Manager Intern", "UI/UX Designer Intern",
+         'Business Analyst Intern', 'Data Analyst Intern']
+
+industries = ['Startup', 'BUMN', 'Finance', 'FMCG', 'Government',
+              'Electronics', 'Healthcare', 'FnB', 'Creative and Media',
+              'Professional Services']
+
+locations = ["Banda Aceh", "Padang", "Pekanbaru",
+             "Jambi", "Palembang", "Jakarta", "Depok",
+             "Surabaya", "Bandung", "Semarang", "Denpasar",
+             "Medan", "Yogyakarta", "Pontianak", "Palangka Raya",
+             "Samarinda"]
+
+@salary_router.get("/roles", response_model=GenericAPIResponseModel)
+def get_roles():
+    response = GenericAPIResponseModel(
+                status=HTTPStatus.OK,
+                message="Successfully get list of Roles",
+                data=jsonable_encoder(roles),
+            )
+    return response
+
+@salary_router.get("/industries", response_model=GenericAPIResponseModel)
+def get_industries():
+    response = GenericAPIResponseModel(
+                status=HTTPStatus.OK,
+                message="Successfully get list of Industries",
+                data=jsonable_encoder(industries),
+            )
+    return response
+
+@salary_router.get("/locations", response_model=GenericAPIResponseModel)
+def get_locations():
+    response = GenericAPIResponseModel(
+                status=HTTPStatus.OK,
+                message="Successfully get list of Locations",
+                data=jsonable_encoder(locations),
+            )
+    return response
+
 
 @salary_router.post("/salary", status_code=http.HTTPStatus.OK)
 def post_compare_salary(
     payload: SalaryCreate = Body(),
     db: Session = Depends(get_db),
-    # user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user)
 ):
     try:
         service = SalaryService()

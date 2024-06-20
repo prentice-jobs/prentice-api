@@ -4,8 +4,6 @@ from datetime import datetime
 
 
 class CompanyBase(BaseModel):
-    created_at: datetime
-    updated_at: datetime
     is_deleted: Optional[bool] = None
     display_name: str
     logo_url: str
@@ -19,6 +17,11 @@ class CompanyBase(BaseModel):
 
 class CompanyCreate(CompanyBase):
     id: UUID4
+    created_at: datetime
+    updated_at: datetime
+
+class CompanyCreateRequest(CompanyBase):
+    pass
 
 
 class CompanyName(BaseModel):
@@ -27,6 +30,8 @@ class CompanyName(BaseModel):
 
 class CompanyUpdate(CompanyBase):
     id: UUID4
+    created_at: datetime
+    updated_at: datetime
 
 
 class Company(CompanyBase):
