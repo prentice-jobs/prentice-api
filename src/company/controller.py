@@ -84,7 +84,7 @@ def fetch_company_by_id(company_id: UUID, db: Session = Depends(get_db), user: U
 
 
 @company_router.post("/", status_code=http.HTTPStatus.CREATED)
-def create_company(db: Session = Depends(get_db), payload: CompanyCreateRequest = Body()):
+def create_company(db: Session = Depends(get_db), payload: CompanyCreateRequest = Body(), user: User = Depends(get_current_user)):
     service = CompanyService()
 
     time_now = get_datetime_now_jkt()

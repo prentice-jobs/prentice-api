@@ -1,4 +1,5 @@
 import uuid
+import os
 from http import HTTPStatus
 
 from pydantic import (
@@ -7,13 +8,15 @@ from pydantic import (
 )
 
 from fastapi.encoders import jsonable_encoder
+import requests
+
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import (
     NoResultFound,
     MultipleResultsFound,
 )
-
+from fastapi import HTTPException
 from prentice_logger import logger
 
 from src.account.model import (
@@ -31,6 +34,7 @@ from src.review.schema import (
     CreateCompanyReviewSchema,
     CompanyReviewModelSchema,
     CreateCompanyReviewResponseSchema,
+    SentimentAnalysisSchema
 )
 from src.review.model import (
     CompanyReview,
@@ -50,6 +54,10 @@ from src.utils.time import get_datetime_now_jkt
 
 class ReviewService:
     # Business Logic methods
+
+    API_URL = os.getenv("API_URL")
+    headers = {"Authorization": f"Bearer {os.getenv('BEARER_TOKEN')}"}
+
     @classmethod
     def fetch_review(
         cls, 
@@ -246,3 +254,31 @@ class ReviewService:
         )
 
         return company_review_model_schema
+
+    @classmethod
+    def _query(cls, payload):
+        response = requests.post(cls.API_URL, headers=cls.headers, json=payload)
+        return response.json()
+
+    @classmethod
+    def query_sentiment_analysis(cls, text: SentimentAnalysisSchema):
+        output = cls._query({"inputs": text})
+        highest_score = -1
+        highest_label = ""
+
+        for sublist in output:
+            for item in sublist:
+                if item['score'] > highest_score:
+                    highest_score = item['score']
+                    highest_label = item['label']
+
+        if 'error' in output:
+            raise HTTPException(status_code=500, detail="Error with sentiment analysis API")
+        
+        response = GenericAPIResponseModel(
+                status=HTTPStatus.CREATED,
+                message=ReviewMessages.COMPANY_REVIEW_CREATE_SUCCESS,
+                data={"label":highest_label},
+        )
+        
+        return response
