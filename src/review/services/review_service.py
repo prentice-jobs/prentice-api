@@ -51,15 +51,6 @@ from src.utils.time import get_datetime_now_jkt
 class ReviewService:
     # Business Logic methods
     @classmethod
-    def fetch_feed(cls):
-        # TODO integrate with ML model response
-        return GenericAPIResponseModel(
-            status=HTTPStatus.OK,
-            message="Successfully fetched Review recommendations",
-            data=FEED_REVIEWS_DUMMY,
-        )
-    
-    @classmethod
     def fetch_review(
         cls, 
         review_id: UUID4,
