@@ -31,7 +31,7 @@ engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-logger.info("PostgreSQL Connection Established!")
+logger.info("PostgreSQL Con nection Established!")
 
 def get_db():
     """This function is used to inject db_session dependency in every REST API requests"""

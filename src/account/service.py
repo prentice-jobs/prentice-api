@@ -73,12 +73,6 @@ class AccountService:
                 created_at=user.created_at
             )
 
-            # RECSYS - Compute Similarity Score Matrix
-            RecommendationService.compute_similarity_for_new_user(
-                user=user,
-                session=session,
-            )
-
             data_json = jsonable_encoder(data)
 
             response = GenericAPIResponseModel(
@@ -135,6 +129,12 @@ class AccountService:
             session.commit()
 
             data_json = jsonable_encoder(user_preference_db)
+
+            # RECSYS - Compute Similarity Score Matrix after user saves user preferences
+            RecommendationService.compute_similarity_for_new_user(
+                user=user,
+                session=session,
+            )
             
             response = GenericAPIResponseModel(
                 status=HTTPStatus.CREATED,

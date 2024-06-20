@@ -8,6 +8,7 @@ from fastapi import (
     APIRouter,
     Depends,
     Body,
+    Query,
 
     File,
     UploadFile,
@@ -122,10 +123,11 @@ def recommend_reviews(
 def fetch_user_feed(
     user: User = Depends(get_current_user),
     session: Session = Depends(get_db),
+    top_n: int = Query(default=5, description="How many Reviews do you want fetched")
 ):
     try:
         # Hyperparameter for recommendation list length
-        TOP_N = 7
+        TOP_N = top_n
 
         response: GenericAPIResponseModel =  RecommendationService.recommend_reviews(
             user=user,
