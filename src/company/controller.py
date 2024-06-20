@@ -17,7 +17,7 @@ from src.company.schema import CompanyCreate, CompanyName, CompanyUpdate, Compan
 from src.company.service import CompanyService
 from src.core.schema import GenericAPIResponseModel
 from src.company import service, schema
-from src.review.services.upload_service import UploadService
+from src.review.services.gcs_service import CloudStorageService
 from src.utils.db import get_db
 from src.account.model import User
 from src.account.security import get_current_user
@@ -26,7 +26,10 @@ from src.utils.time import get_datetime_now_jkt
 VERSION = "v1"
 ENDPOINT = "company"
 
-company_router = APIRouter(prefix=f"/{VERSION}/{ENDPOINT}", tags=[ENDPOINT])
+company_router = APIRouter(
+    prefix=f"/{VERSION}/{ENDPOINT}", 
+    tags=[ENDPOINT]
+)
 
 @company_router.get(
     "/all",
@@ -44,9 +47,9 @@ def fetch_all_companies(db: Session = Depends(get_db), user: User = Depends(get_
     status_code=http.HTTPStatus.OK,
 )
 def search_company_by_name(
-    name: str = Query(..., description="Name of the company to search for"), 
-    db: Session = Depends(get_db), 
-    user: User = Depends(get_current_user)
+    name: str = Query(..., description="Name of the company to search for"),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     service = CompanyService()
     companies = service.search_companies_by_name(db, name=name)

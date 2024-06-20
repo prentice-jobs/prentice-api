@@ -123,7 +123,7 @@ class LikesService:
             return response
         except MultipleResultsFound as err:
             response = GenericAPIResponseModel(
-                status_code=HTTPStatus.BAD_REQUEST,
+                status_code=HTTPStatus.CONFLICT,
                 content=err.__str__(),
                 error=err.__str__(),
             )

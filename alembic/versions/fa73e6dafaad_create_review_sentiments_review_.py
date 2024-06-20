@@ -29,6 +29,8 @@ def upgrade() -> None:
         sa.Column('review_id', sa.UUID()),
         sa.Column('sentiment_score', sa.SmallInteger()),
         sa.Column('sentiment', sa.String(30)),
+
+        sa.PrimaryKeyConstraint('id'),
     )
 
     op.create_table(
@@ -41,7 +43,9 @@ def upgrade() -> None:
         sa.Column('review_id', sa.UUID()),
         sa.Column('author_id', sa.UUID()),
         sa.Column('likes_count', sa.Integer()),
-        sa.Column('content', sa.String(1000))
+        sa.Column('content', sa.String(1000)),
+
+        sa.PrimaryKeyConstraint('id'),
     )
 
     op.create_table(
@@ -53,6 +57,8 @@ def upgrade() -> None:
 
         sa.Column('review_comment_id', sa.UUID()),
         sa.Column('liker_id', sa.UUID()),
+
+        sa.PrimaryKeyConstraint('id'),
     )
 
 

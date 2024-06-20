@@ -41,10 +41,9 @@ class User(PrenticeBaseModel):
 class UserPreferences(PrenticeBaseModel):
     __tablename__ = "user_preferences"
     
-    role = Column(String(255), nullable=True)
-    industry = Column(String(255), nullable=True)
-    location = Column(String(255), nullable=True)
-    is_active = Column(Boolean)
+    role = Column(String(255))
+    industry = Column(String(255))
+    location = Column(String(255))
 
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     user = relationship(

@@ -21,6 +21,16 @@ class RegistrationFailedException(Exception):
         super().__init__(message)
         self.message = message
 
+class UserPreferencesAlreadyExistsException(Exception):
+    def __init__(self, message="User already has a preference setting!"):
+        super().__init__(message)
+        self.message = message
+
+class SavePreferencesFailedException(Exception):
+    def __init__(self, message="Error while saving user preferences"):
+        super().__init__(message)
+        self.message = message
+
 class FirebaseTokenVerificationException(HTTPException):
     def __init__(
         self, 

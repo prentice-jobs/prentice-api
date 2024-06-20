@@ -31,7 +31,7 @@ engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-logger.info("PostgreSQL Connection Established!")
+logger.info("PostgreSQL Con nection Established!")
 
 def get_db():
     """This function is used to inject db_session dependency in every REST API requests"""
@@ -39,7 +39,6 @@ def get_db():
     db: Session = SessionLocal()
     try:
         yield db
-        logger.info("Yielding DB")
     except Exception as e:
         # Rollback the db if any exception occurs
         logger.error("Error when yielding DB with SQLAlchemy")
