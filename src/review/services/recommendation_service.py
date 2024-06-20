@@ -51,6 +51,7 @@ from src.review.model import (
 from src.review.schema import (
     CreateUserReviewSimScoresSchema,
     UserReviewSimScoresModelSchema,
+    CompanyReviewModelSchema,
 )
 from src.review.exceptions_recsys import (
     CreateSimScoresFailedException,
@@ -181,14 +182,6 @@ class RecommendationService:
         if vectorizer is None:
             raise RecsysVectorizerNotFoundException()
 
-        # all_users_preferences_list = session.query(
-        #         UserPreferences
-        #     ) \
-        #     .filter(
-        #         UserPreferences.is_deleted == False,
-        #     ) \
-        #     .all()
-        
         # Create query to fetch Review data using SQLAlchemy
         users_query = session.query(
                 UserPreferences.user_id,
@@ -252,6 +245,70 @@ class RecommendationService:
         response = GenericAPIResponseModel(
             status=HTTPStatus.CREATED,
             message=f"Created {created_count} SimScore objects in db",
+        )
+
+        return response
+    
+    @classmethod
+    def recommend_reviews(
+        cls,
+        user: User,
+        session: Session,
+        top_n: int = 5,
+        random_factor: float = 0.4,
+        location_weight: float = 2.0,
+    ):
+        # Fetch UserPreferences of the User
+        user_preferences = session.query(UserPreferences) \
+                            .filter(
+                                UserPreferences.user_id == user.id,
+                                UserPreferences.is_deleted == False,
+                            ) \
+                            .first()
+        
+        
+        if user_preferences is None:
+            # TODO change to custom Exception
+            raise Exception()
+
+        prentice_all_reviews = session.query(CompanyReview) \
+                                .filter(CompanyReview.is_deleted == False) \
+                                .all()
+        
+        if len(prentice_all_reviews) == 0:
+            # TODO change to custom Exception
+            raise Exception()
+        
+        sim_scores_user = session.query(UserReviewSimilarityScores) \
+                            .filter(
+                                UserReviewSimilarityScores.user_id == user.id,
+                                UserReviewSimilarityScores.is_deleted == False,
+                            ) \
+                            .all()
+        
+        if len(sim_scores_user) == 0:
+            # TODO change to custom Exception
+            raise Exception()
+        
+        review_recommendations = cls.__recommend_reviews(
+            preferred_role=user_preferences.role,
+            preferred_industry=user_preferences.industry,
+            preferred_location=user_preferences.location,
+
+            all_reviews=prentice_all_reviews,
+            sim_scores_user=sim_scores_user,
+            top_n=top_n,
+        )
+
+        if len(review_recommendations) == 0:
+            logger.info(f"review_recommendations for {user.id}: {user.email} returned an empty list.")
+
+        data_json = jsonable_encoder(review_recommendations)
+
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.OK,
+            message="Successfully generated review recommendations",
+            data=data_json
         )
 
         return response
@@ -396,9 +453,9 @@ class RecommendationService:
             # NOTE - not given additional weight as the others,
         preferred_location, 
             # User's preferred location
-        reviews,
+        all_reviews: List[CompanyReview],
             # List[Review]
-        sim_scores_user, 
+        sim_scores_user: List[UniversalSimScoreSchema], 
         top_n=5, 
         random_factor=0.4, 
         location_weight=2.0
@@ -441,7 +498,7 @@ class RecommendationService:
         output: Review[]
         }
         '''
-        nearby_location_ids = {
+        nearby_location_ids_dict = {
             "Banda Aceh": ["Medan"],
             "Medan": ["Banda Aceh"],
             "Pekanbaru": ["Jambi"],
@@ -457,7 +514,7 @@ class RecommendationService:
             "Samarinda": ["Palangka Raya"]
         }
 
-        roles = ["Software Engineer Intern", "Quality Assurance Intern",
+        roles_list = ["Software Engineer Intern", "Quality Assurance Intern",
                 'Business Development Intern', "Data Scientist Intern",
                 "Product Manager Intern", "UI/UX Designer Intern",
                 'Business Analyst Intern', 'Data Analyst Intern']
@@ -474,22 +531,25 @@ class RecommendationService:
         ])
 
         adjusted_scores = sim_scores_user.copy()
-        review_dict = {review['id']: review for review in reviews}
+        review_dict = {review.id : review for review in all_reviews}
 
         for score in adjusted_scores:
-            if review_dict[score['review_id']]['location'] == preferred_location:
-                score['sim_score'] *= location_weight
+            if review_dict[score.review_id].location == preferred_location:
+                score.sim_score *= location_weight
 
         # Adjust for role similarity
         for score in adjusted_scores:
-            review_role = review_dict[score['review_id']]['role']
-            score['sim_score'] *= role_similarity_matrix[roles.index(preferred_role), roles.index(review_role)]
+            review_role = review_dict[score.review_id].role
+            score.sim_score *= role_similarity_matrix[
+                roles_list.index(preferred_role), 
+                roles_list.index(review_role)
+            ]
 
         # Sort the adjusted scores based on sim_score
-        sorted_scores = sorted(adjusted_scores, key=lambda x: x['sim_score'], reverse=True)
+        sorted_scores = sorted(adjusted_scores, key=lambda x: x.sim_score, reverse=True)
 
         # Get top review indices based on sorted scores
-        top_review_ids = [score['review_id'] for score in sorted_scores]
+        top_review_ids = [score.review_id for score in sorted_scores]
 
         # Determine number of top and random reviews to select
         num_random_reviews = int(top_n * random_factor)
@@ -505,30 +565,54 @@ class RecommendationService:
         # Filter random reviews based on nearby locations
         nearby_ids = []
         for review_id in remaining_ids:
-            review_location = review_dict[review_id]['location']
-            if review_location in nearby_location_ids.get(preferred_location, []):
+            review_location = review_dict[review_id].location
+            if review_location in nearby_location_ids_dict.get(preferred_location, []):
                 nearby_ids.append(review_id)
 
         # Randomly select from nearby reviews
         if nearby_ids:
-            nearby_random_reviews = [review_dict[review_id] for review_id in np.random.choice(nearby_ids, min(num_random_reviews, len(nearby_ids)), replace=False)]
+            nearby_random_reviews = [
+                review_dict[review_id] \
+                for review_id in np.random.choice(
+                    nearby_ids, 
+                    min(num_random_reviews, 
+                    len(nearby_ids)), 
+                    replace=False
+                )
+            ]
         else:
             nearby_random_reviews = []
 
         # Combine and ensure diversity in roles
-        combined_reviews = pd.DataFrame(top_reviews + nearby_random_reviews).drop_duplicates(subset=['role']).head(top_n).to_dict(orient='records')
+        combined_reviews = top_reviews + nearby_random_reviews
+        unique_roles = set()
+        final_reviews = []
+
+        for review in combined_reviews:
+            if review.role not in unique_roles:
+                final_reviews.append(review)
+                unique_roles.add(review.role)
+                if len(final_reviews) == top_n:
+                    break
 
         # If the combined reviews are less than top_n, add more from the remaining pool
-        if len(combined_reviews) < top_n:
-            additional_reviews_needed = top_n - len(combined_reviews)
-            additional_reviews = [review_dict[review_id] for review_id in remaining_ids[:additional_reviews_needed]]
-            combined_reviews.extend(additional_reviews)
+        if len(final_reviews) < top_n:
+            additional_reviews_needed = top_n - len(final_reviews)
+            for review_id in remaining_ids[:additional_reviews_needed]:
+                review = review_dict[review_id]
+                if review.role not in unique_roles:
+                    final_reviews.append(review)
+                    unique_roles.add(review.role)
+                    if len(final_reviews) == top_n:
+                        break
 
         # Shuffle the combined recommendations
-        np.random.shuffle(combined_reviews)
+        np.random.shuffle(final_reviews)
 
-        return combined_reviews[:top_n]
+        return final_reviews[:top_n]
     
+    # Utility methods
+
     @classmethod
     def __save_sim_scores_to_db(
         cls,
@@ -590,7 +674,6 @@ class RecommendationService:
 
         return created_count
 
-    # Utility methods
     @classmethod
     def __create_user_review_sim_scores_db(
         cls,

@@ -48,7 +48,6 @@ review_router = APIRouter(
     tags=[ENDPOINT]
 )
 
-
 @review_router.post("/recsys/new-user", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def compute_sim_new_user(
     user: User = Depends(get_current_user),
@@ -78,7 +77,7 @@ def compute_sim_new_review(
 ):
     try:
         review_id = uuid.UUID(payload.review_id)
-        response = RecommendationService.compute_similarity_for_new_review(
+        response: GenericAPIResponseModel = RecommendationService.compute_similarity_for_new_review(
             target_review_id=review_id,
             session=session,
         )
@@ -92,6 +91,32 @@ def compute_sim_new_review(
         )
 
         return build_api_response(response)
+
+@review_router.post("/recsys", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
+def recommend_reviews(
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_db),
+):
+    try:
+        # Hyperparameter for recommendation list length
+        TOP_N = 5
+
+        response: GenericAPIResponseModel =  RecommendationService.recommend_reviews(
+            user=user,
+            session=session,
+            top_n=TOP_N,
+        )
+
+        return build_api_response(response)
+    except Exception as err:
+        response = GenericAPIResponseModel(
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            message=err.__str__(),
+            error=err.__str__()
+        )
+
+        return build_api_response(response) 
+
 
 @review_router.get("/feed", status_code=HTTPStatus.OK, response_model=GenericAPIResponseModel)
 def fetch_user_feed(
