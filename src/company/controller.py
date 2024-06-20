@@ -43,7 +43,11 @@ def fetch_all_companies(db: Session = Depends(get_db), user: User = Depends(get_
     response_description="Search companies by name",
     status_code=http.HTTPStatus.OK,
 )
-def search_company_by_name(name: str = Query(..., description="Name of the company to search for"), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def search_company_by_name(
+    name: str = Query(..., description="Name of the company to search for"), 
+    db: Session = Depends(get_db), 
+    user: User = Depends(get_current_user)
+):
     service = CompanyService()
     companies = service.search_companies_by_name(db, name=name)
     return companies
