@@ -23,6 +23,11 @@ from src.account.security import get_current_user
 from src.utils.db import get_db
 from src.utils.response_builder import build_api_response
 
+from src.review.model import (
+    CompanyReview,
+    ReviewComment,
+)
+
 from src.review.services.review_service import ReviewService
 from src.review.services.gcs_service import CloudStorageService
 from src.review.services.comment_service import CommentService
@@ -244,11 +249,31 @@ def upload_offer_letter(
 def compute_sentiment(
     payload: SentimentAnalysisSchema = Body(),
     session: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
+    # user: User = Depends(get_current_user)
 ):
     try:
         service = ReviewService()
-        response = service.query_sentiment_analysis(payload.review_description)
+        # response = service.query_sentiment_analysis(payload.review_description)
+        output = service._query({"inputs": payload.review_description})
+   
+        highest_score = -1
+        highest_label = ""
+
+        for sublist in output:
+            for item in sublist:
+                print(item)
+                if item['score'] > highest_score:
+                    highest_score = item['score']
+                    highest_label = item['label']
+
+        if 'error' in output:
+            raise HTTPException(status_code=500, detail="Error with sentiment analysis API")
+        
+        response = GenericAPIResponseModel(
+                status=HTTPStatus.CREATED,
+                message="success",
+                data={"label":highest_label},
+        )
 
         return response
     except Exception as err:

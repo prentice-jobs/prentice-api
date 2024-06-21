@@ -6,7 +6,7 @@ from pydantic import (
     EmailStr,
     UUID4
 )
-
+from fastapi import Body
 from fastapi.encoders import jsonable_encoder
 import requests
 
@@ -261,13 +261,16 @@ class ReviewService:
         return response.json()
 
     @classmethod
-    def query_sentiment_analysis(cls, text: SentimentAnalysisSchema):
-        output = cls._query({"inputs": text})
+    def query_sentiment_analysis(cls, payload: SentimentAnalysisSchema = Body()):
+        output = cls._query({"inputs": payload.review_description})
+
+   
         highest_score = -1
         highest_label = ""
 
         for sublist in output:
             for item in sublist:
+                print(item)
                 if item['score'] > highest_score:
                     highest_score = item['score']
                     highest_label = item['label']
