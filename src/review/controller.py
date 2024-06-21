@@ -242,13 +242,13 @@ def upload_offer_letter(
 
 @review_router.post("/sentiment", status_code=HTTPStatus.OK)
 def compute_sentiment(
-    payload: str= Body(),
+    payload: SentimentAnalysisSchema = Body(),
     session: Session = Depends(get_db),
-    # user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user)
 ):
     try:
         service = ReviewService()
-        response = service.query_sentiment_analysis(payload)
+        response = service.query_sentiment_analysis(payload.review_description)
 
         return response
     except Exception as err:

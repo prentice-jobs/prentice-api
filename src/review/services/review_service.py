@@ -261,7 +261,7 @@ class ReviewService:
         return response.json()
 
     @classmethod
-    def query_sentiment_analysis(cls, text: str):
+    def query_sentiment_analysis(cls, text: SentimentAnalysisSchema):
         output = cls._query({"inputs": text})
         highest_score = -1
         highest_label = ""
