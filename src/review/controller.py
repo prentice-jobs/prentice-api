@@ -249,38 +249,36 @@ def upload_offer_letter(
 def compute_sentiment(
     payload: SentimentAnalysisSchema = Body(),
     session: Session = Depends(get_db),
-    # user: User = Depends(get_current_user)
 ):
     try:
         service = ReviewService()
-        # response = service.query_sentiment_analysis(payload.review_description)
         output = service._query({"inputs": payload.review_description})
-   
+
         highest_score = -1
         highest_label = ""
 
         for sublist in output:
-            for item in sublist:
-                print(item)
-                if item['score'] > highest_score:
-                    highest_score = item['score']
-                    highest_label = item['label']
+            if isinstance(sublist, list):
+                for item in sublist:
+                    if 'score' in item and 'label' in item and item['score'] > highest_score:
+                        highest_score = item['score']
+                        highest_label = item['label']
 
         if 'error' in output:
             raise HTTPException(status_code=500, detail="Error with sentiment analysis API")
-        
+
         response = GenericAPIResponseModel(
-                status=HTTPStatus.CREATED,
-                message="success",
-                data={"label":highest_label},
+            status=HTTPStatus.CREATED,
+            message="success",
+            data={"label": highest_label},
         )
 
         return response
     except Exception as err:
         response = GenericAPIResponseModel(
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
-            message=err.__str__(),
-            error=err.__str__()
+            message=str(err),
+            error=str(err)
         )
 
         return build_api_response(response)
