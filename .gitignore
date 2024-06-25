@@ -2,6 +2,28 @@
 ddl.sql
 gha-creds-*.json
 secrets/
+.vscode/
+
+# Disallow all other .env
+.env
+.env.dev
+.env*
+.git
+env/
+.venv/
+
+# Allow .env.example to be committed
+!.env.example
+
+
+*/__pycache__
+*/*/__pycache__
+src/__pycache__
+src/*/__pycache__
+src/*/*/__pycache__
+
+archive/
+.DS_Store
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
